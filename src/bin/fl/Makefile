@@ -44,12 +44,12 @@ fl: $(OBJ) $(LIB)
 	$(CC) $(CFLAGS) $(INC) -c $<
 
 .cc.o:
-	$(CX) $(CFLAGS) $(CXXFLAGS) $(INC) -c $<
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(INC) -c $<
 
 y.tab.c: language.y fl.h language.h graph.h prefs_ext.h
 	@$(YACC) -d -v language.y
 
-lex.yy.c: lexer y.tab.h graph.h fl.h
+lex.yy.c: lexer y.tab.c graph.h fl.h y.tab.c
 	@$(LEX) lexer
 
 clean:
@@ -71,7 +71,7 @@ emit.o:		    emit.h fl.h
 error.o:	    error.h fl.h
 expand_cursor.o:    expand_cursor.h fl.h
 file_ops.o:	    file_ops.h fl.h
-fl.o:		    fl.h y.tab.h prefs_ext.h fl.h
+fl.o:		    fl.h y.tab.c prefs_ext.h fl.h
 graph.o:	    graph.h prefs_ext.h typecheck.h fl.h
 initialize.o:	    initialize.h prefs.h fl.h
 io.o:		    io.h graph.h fl.h
