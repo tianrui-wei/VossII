@@ -83,9 +83,8 @@ jobs:
           git clone https://github.com/yosyshq/yosys.git
           cd yosys
           git checkout ${{ matrix.yosys }}
-          ./configure --prefix=$GITHUB_WORKSPACE/.local
-          make -j${{ env.procs }}
-          make install
+          PREFIX=$GITHUB_WORKSPACE/.local make -j${{ env.procs }}
+          PREFIX=$GITHUB_WORKSPACE/.local make install
 
       - uses: actions/checkout@v3
 
