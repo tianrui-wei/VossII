@@ -28,7 +28,6 @@ jobs:
           sudo apt-get install -y doxygen flex bison gawk libz-dev tcl-dev tk-dev libc6-dev graphviz
 
       - name: Setup GCC
-        if: startsWith(matrix.compiler, 'gcc')
         shell: bash
         run: |
           CXX=${CC/#gcc/g++}
@@ -41,7 +40,6 @@ jobs:
           CC: ${{ matrix.compiler }}
 
       - name: Setup Clang
-        if: startsWith(matrix.compiler, 'clang')
         shell: bash
         run: |
           wget https://apt.llvm.org/llvm-snapshot.gpg.key
@@ -85,7 +83,6 @@ jobs:
           git clone https://github.com/yosyshq/yosys.git
           cd yosys
           git checkout ${{ matrix.yosys }}
-          autoconf
           ./configure --prefix=$GITHUB_WORKSPACE/.local
           make -j${{ env.procs }}
           make install
