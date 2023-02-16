@@ -16,8 +16,8 @@ REPO_OWNER := `stat --printf "%u:%g" .`
 YACC   ='bison -y'
 LEX    ='flex -l'
 RANLIB = ranlib
-CC     = gcc
-CX     = g++
+CC     ?= gcc
+CX     ?= g++
 # CC     = clang
 # CX     = clang++
 
