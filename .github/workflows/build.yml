@@ -74,7 +74,7 @@ jobs:
         id: cache-yosys
         uses: actions/cache@v3
         with:
-          path: .local/
+          path: ~/.local/
           key: ${{ matrix.os.id }}-${{ matrix.yosys }}
 
       - name: yosys
@@ -84,6 +84,9 @@ jobs:
           git clone https://github.com/yosyshq/yosys.git
           cd yosys
           git checkout ${{ matrix.yosys }}
+          if [[ ${CC%-*} == 'gcc' ]] ; then
+              make config-gcc
+          fi
           PREFIX=$HOME/.local make -j${{ env.procs }}
           PREFIX=$HOME/.local make install
 
