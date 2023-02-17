@@ -89,10 +89,12 @@ jobs:
           if [[ ${CC%-*} == 'gcc' ]] ; then
               make config-gcc
           fi
-          PREFIX=~/.local make -j${{ env.procs }}
-          PREFIX=~/.local make install
+          make PREFIX=~/.local -j${{ env.procs }}
+          make PREFIX=~/.local install
 
       - uses: actions/checkout@v3
 
-      - run: |
+      - name: compile vossii
+        shell: bash
+        run: |
           make -C src package -j4
