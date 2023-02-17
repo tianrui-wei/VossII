@@ -25,7 +25,7 @@ jobs:
       - name: doxygen
         run: |
           sudo apt update
-          sudo apt-get install -y doxygen flex bison gawk libz-dev tcl-dev tk-dev libstdc++-dev graphviz
+          sudo apt-get install -y doxygen flex bison gawk libz-dev tcl-dev tk-dev libstdc++-11-dev graphviz
 
       - name: Setup GCC
         shell: bash
