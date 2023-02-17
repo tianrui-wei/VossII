@@ -15,8 +15,8 @@ jobs:
         os:
           - { id: ubuntu-20.04, name: focal }
         compiler:
-          - 'clang-12'
           - 'gcc-11'
+          #          - 'clang-12'
         yosys:
           - 'yosys-0.26'
       fail-fast: false
@@ -25,7 +25,7 @@ jobs:
       - name: doxygen
         run: |
           sudo apt update
-          sudo apt-get install -y doxygen flex bison gawk libz-dev tcl-dev tk-dev libc6-dev graphviz
+          sudo apt-get install -y doxygen flex bison gawk libz-dev tcl-dev tk-dev libstdc++-dev graphviz
 
       - name: Setup GCC
         shell: bash
@@ -36,24 +36,25 @@ jobs:
           sudo apt-get install $CC $CXX
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
-        env:
-          CC: ${{ matrix.compiler }}
-
-      - name: Setup Clang
-        shell: bash
-        run: |
-          wget https://apt.llvm.org/llvm-snapshot.gpg.key
-          sudo apt-key add llvm-snapshot.gpg.key
-          rm llvm-snapshot.gpg.key
-          sudo apt-add-repository "deb https://apt.llvm.org/${{ matrix.os.name }}/ llvm-toolchain-${{ matrix.os.name }} main"
-          sudo apt-get update
-          CXX=${CC/#clang/clang++}
-          sudo apt-get install -y $CC $CXX
-          echo "CC=$CC" >> $GITHUB_ENV
-          echo "CXX=$CXX" >> $GITHUB_ENV
           echo "CX=$CXX" >> $GITHUB_ENV
         env:
           CC: ${{ matrix.compiler }}
+
+            #      - name: Setup Clang
+            #        shell: bash
+            #        run: |
+            #          wget https://apt.llvm.org/llvm-snapshot.gpg.key
+            #          sudo apt-key add llvm-snapshot.gpg.key
+            #          rm llvm-snapshot.gpg.key
+            #          sudo apt-add-repository "deb https://apt.llvm.org/${{ matrix.os.name }}/ llvm-toolchain-${{ matrix.os.name }} main"
+            #          sudo apt-get update
+            #          CXX=${CC/#clang/clang++}
+            #          sudo apt-get install -y $CC $CXX
+            #          echo "CC=$CC" >> $GITHUB_ENV
+            #          echo "CXX=$CXX" >> $GITHUB_ENV
+            #          echo "CX=$CXX" >> $GITHUB_ENV
+            #        env:
+            #          CC: ${{ matrix.compiler }}
 
       - name: Runtime environment
         shell: bash
