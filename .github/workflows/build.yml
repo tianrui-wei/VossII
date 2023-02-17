@@ -16,7 +16,7 @@ jobs:
           - { id: ubuntu-20.04, name: focal }
         compiler:
           - 'gcc-11'
-            #          - 'clang-12'
+          - 'clang-12'
         yosys:
           - 'yosys-0.26'
       fail-fast: false
@@ -77,7 +77,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.local/
-          key: ${{ matrix.os.id }}-${{ matrix.yosys }}
+          key: ${{ matrix.os.id }}-${{ matrix.yosys }}-${{ matrix.compiler }}
 
       - name: yosys
         if: steps.cache-yosys.outputs.cache-hit != 'true'
