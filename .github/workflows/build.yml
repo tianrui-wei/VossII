@@ -29,6 +29,7 @@ jobs:
 
       - name: Setup GCC
         shell: bash
+        if: startsWith(matrix.compiler, 'gcc')
         run: |
           CXX=${CC/#gcc/g++}
           sudo apt-add-repository ppa:ubuntu-toolchain-r/test
@@ -42,6 +43,7 @@ jobs:
 
       - name: Setup Clang
         shell: bash
+        if: startsWith(matrix.compiler, 'clang')
         run: |
           wget https://apt.llvm.org/llvm-snapshot.gpg.key
           sudo apt-key add llvm-snapshot.gpg.key
@@ -87,8 +89,9 @@ jobs:
           if [[ ${CC%-*} == 'gcc' ]] ; then
               make config-gcc
           fi
-          PREFIX=$HOME/.local make -j${{ env.procs }}
-          PREFIX=$HOME/.local make install
+          touch ~/.local/test
+          #PREFIX=$HOME/.local make -j${{ env.procs }}
+          #PREFIX=$HOME/.local make install
 
       - uses: actions/checkout@v3
 
