@@ -61,8 +61,7 @@ jobs:
         env:
           WORKSPACE: ${{ github.workspace }}
         run: |
-          echo "GITHUB_WORKSPACE=`pwd`" >> $GITHUB_ENV
-          echo "$GITHUB_WORKSPACE/.local/bin" >> $GITHUB_PATH
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
           echo "procs=$(nproc)" >> $GITHUB_ENV
 
       - name: Tool versions
@@ -81,12 +80,12 @@ jobs:
       - name: yosys
         if: steps.cache-yosys.outputs.cache-hit != 'true'
         run: |
-          mkdir -p $GITHUB_WORKSPACE/.local/
+          mkdir -p $HOME/.local/
           git clone https://github.com/yosyshq/yosys.git
           cd yosys
           git checkout ${{ matrix.yosys }}
-          PREFIX=$GITHUB_WORKSPACE/.local make -j${{ env.procs }}
-          PREFIX=$GITHUB_WORKSPACE/.local make install
+          PREFIX=$HOME/.local make -j${{ env.procs }}
+          PREFIX=$HOME/.local make install
 
       - uses: actions/checkout@v3
 
