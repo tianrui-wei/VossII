@@ -225,7 +225,7 @@ minisat:
 	make -C "$(MINISAT_DIR)" install
 
 visualization:
-	make -C "$(VISUALIZATION_DIR)" TCL_INCLUDE=$(TCL_INCLUDE)
+	make -C "$(VISUALIZATION_DIR)" TCL_INCLUDE=$(TCL_INCLUDE) CC=$(CC) CXX=$(CX)
 
 $(YOSYS_WRITE_PEXLIF)/write_pexlif.so: $(YOSYS_WRITE_PEXLIF)/write_pexlif.cc
 	make -C $(YOSYS_WRITE_PEXLIF)
