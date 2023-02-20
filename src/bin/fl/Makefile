@@ -9,7 +9,7 @@ PLUGIN_DIR ?=$(ROOT_DIR)/plugins
 
 CFLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
 	$(COMPATIBILITY_FLAG) \
-	-Wall -Wextra -Werror -Wclobbered \
+	-Wall -Wextra -Werror \
 	-DVERSION_DATE='"$(VERSION_DATE)"' \
 	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
 

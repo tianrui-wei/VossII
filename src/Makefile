@@ -218,7 +218,7 @@ install:
 	@-make install_all
 
 circuit-isomatch:
-	make -C "$(CKT_ISO_MATCH_DIR)" release
+	make -C "$(CKT_ISO_MATCH_DIR)" release CC=$(CC) CXX=$(CX)
 
 minisat:
 	make -C "$(MINISAT_DIR)" config prefix=$(MINISAT_DIR) CC=$(CC) CXX=$(CX)
