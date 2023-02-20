@@ -7,11 +7,13 @@
 MINISAT_DIR ?=../../external/minisat/
 PLUGIN_DIR ?=$(ROOT_DIR)/plugins
 
-CFLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
-	$(COMPATIBILITY_FLAG) \
+BASE_FLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
 	-Wall -Wextra -Werror \
 	-DVERSION_DATE='"$(VERSION_DATE)"' \
 	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
+
+CFLAGS += $(BASE_FLAGS) $(COMPATIBILITY_FLAG)
+CXXFLAGS += $(BASE_FLAGS)
 
 # Minisat legacy code workaround
 CXXFLAGS = -fpermissive -Wno-error
@@ -34,7 +36,7 @@ OBJ = new_bdd.o error.o arb_prec.o file_ops.o initialize.o symbol_tbl.o \
 	iso.o pexlif.o doc.o serialize.o
 
 fl: $(OBJ) $(LIB)
-	$(CX) $(CFLAGS) $(INC) $(LINKFLAG) -o fl $(OBJ) $(LIB) \
+	$(CX) $(CXXFLAGS) $(INC) $(LINKFLAG) -o fl $(OBJ) $(LIB) \
 	$(COMPAT_LIB) $(FL_LIB_FLAGS)
 
 #
@@ -50,7 +52,7 @@ lex.yy.o: lex.yy.c
 	$(CC) $(CFLAGS) $(INC) -c $<
 
 .cc.o:
-	$(CXX) $(CFLAGS) $(CXXFLAGS) $(INC) -c $<
+	$(CXX) $(CXXFLAGS) $(CXXFLAGS) $(INC) -c $<
 
 y.tab.c: language.y fl.h language.h graph.h prefs_ext.h
 	@$(YACC) -d -v language.y
