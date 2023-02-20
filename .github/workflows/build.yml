@@ -16,6 +16,7 @@ jobs:
           - { id: ubuntu-20.04, name: focal }
         compiler:
           - 'gcc-11'
+          - 'clang-12'
           - 'clang-15'
         yosys:
           - 'yosys-0.26'
@@ -49,6 +50,7 @@ jobs:
           sudo apt-key add llvm-snapshot.gpg.key
           rm llvm-snapshot.gpg.key
           sudo apt-add-repository "deb https://apt.llvm.org/${{ matrix.os.name }}/ llvm-toolchain-${{ matrix.os.name }} main"
+          sudo apt-add-repository "deb https://apt.llvm.org/${{ matrix.os.name }}/ llvm-toolchain-${{ matrix.os.name }}-15 main"
           sudo apt-get update
           CXX=${CC/#clang/clang++}
           sudo apt-get install -y $CC $CXX
