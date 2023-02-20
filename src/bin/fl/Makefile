@@ -40,10 +40,10 @@ fl: $(OBJ) $(LIB)
 #
 # compilation with includes
 #
-y.tab.o: y.tab.c y.tab.h
+y.tab.o: y.tab.c
 	$(CC) $(INC) -c $<
 
-lex.yy.o: lex.yy.c lex.yy.h
+lex.yy.o: lex.yy.c
 	$(CC) $(INC) -c $<
 
 .c.o:
