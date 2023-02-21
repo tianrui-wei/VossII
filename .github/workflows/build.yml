@@ -53,7 +53,8 @@ jobs:
           sudo apt-add-repository "deb https://apt.llvm.org/${{ matrix.os.name }}/ llvm-toolchain-${{ matrix.os.name }}-15 main"
           sudo apt-get update
           CXX=${CC/#clang/clang++}
-          sudo apt-get install -y $CC $CXX
+          LLD=${CC/#clang/lld}
+          sudo apt-get install -y $CC $CXX $LLD
           echo "CC=$CC" >> $GITHUB_ENV
           echo "CXX=$CXX" >> $GITHUB_ENV
           echo "CX=$CXX" >> $GITHUB_ENV

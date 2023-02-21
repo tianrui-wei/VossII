@@ -13,15 +13,18 @@ BASE_FLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
 	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
 
 CFLAGS += $(BASE_FLAGS) $(COMPATIBILITY_FLAG)
-CXXFLAGS += $(BASE_FLAGS)
+CXXFLAGS += $(BASE_FLAGS) -fpermissive -Wno-error
 
+ifeq '' '$(findstring clang++,$(CX))'
+  FL_LIB_FLAGS = -ldl
+else
+  FL_LIB_FLAGS = -ldl -fuse-ld=$(subst clang++,lld,$(CX))
+endif
 # Minisat legacy code workaround
-CXXFLAGS = -fpermissive -Wno-error
 
 INC = -I../../include -I$(MINISAT_DIR)/include $(TCL_INCLUDE) -DROOT_DIR='"$(ROOT_DIR)"'
 LIB = ../../lib/fl_lib.a $(MINISAT_DIR)/lib/libminisat.a \
       $(CKT_ISO_MATCH_DIR)/libisomatch.a
-FL_LIB_FLAGS = -ldl
 
 # All headers that affect fl's plugin ABI.
 ABI_HEADERS = float.h graph.h plugin.h strings.h typecheck.h ../../include/types.h
