@@ -18,19 +18,25 @@
 #ifdef DEBUG_EQUAL
 #define EQ_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #else
-#define EQ_DEBUG(...) do {} while(false)
+#define EQ_DEBUG(...)                                                          \
+  do {                                                                         \
+  } while (false)
 #endif
 
 /* Debug printing for subcircuit finding */
 #ifdef DEBUG_FIND
 #define FIND_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #else
-#define FIND_DEBUG(...) do {} while(false)
+#define FIND_DEBUG(...)                                                        \
+  do {                                                                         \
+  } while (false)
 #endif
 
 /* Debug printing for temporary debug, not meant to last */
 #ifdef DEBUG_TMP
 #define TMP_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #else
-#define TMP_DEBUG(...) do {} while(false)
+#define TMP_DEBUG(...)                                                         \
+  do {                                                                         \
+  } while (false)
 #endif

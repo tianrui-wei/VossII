@@ -4,10 +4,10 @@
 //-------------------------------------------------------------------
 
 /********************************************************************
-*                                                                   *
-*     Original author: Carl-Johan Seger 1995                        *
-*                                                                   *
-*********************************************************************/
+ *                                                                   *
+ *     Original author: Carl-Johan Seger 1995                        *
+ *                                                                   *
+ *********************************************************************/
 /* expand_cursor.h -- header for expand_cursor.c */
 
 #ifdef EXPORT_FORWARD_DECL
@@ -20,17 +20,17 @@ void Print_line(string s, odests fp);
 /* ----------------------- Main include file ------------------------------- */
 #ifndef EXPAND_CURSOR_H
 #define EXPAND_CURSOR_H
-#include "fl.h"  /* Global data types and include files               */
+#include "fl.h" /* Global data types and include files               */
 
-#define LINE_SIZE 	85
+#define LINE_SIZE 85
 
-typedef struct line_rec	*line_ptr;
+typedef struct line_rec *line_ptr;
 typedef struct line_rec {
-	char		*line;
-	int		allocated;
-	int		used;
-	line_ptr	up;
-	line_ptr	down;
+  char *line;
+  int allocated;
+  int used;
+  line_ptr up;
+  line_ptr down;
 } line_rec;
 
 #endif /* EXPAND_CURSOR_H */

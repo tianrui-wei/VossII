@@ -17,9 +17,9 @@
 #endif
 
 #include "abi_version.h"
-#include "types.h"
 #include "strings.h"
 #include "typecheck.h"
+#include "types.h"
 
 extern g_ptr void_nd;
 #include "graph.h"
@@ -44,8 +44,7 @@ typedef struct fl_plugin_api_rec {
   typeExp_ptr (*make_string)();
 
   /* Kill the interpreter, with the given error message. */
-  void (*die)(const char* fmt, ...);
-
+  void (*die)(const char *fmt, ...);
 
   /* Working with redexes */
 
@@ -55,7 +54,7 @@ typedef struct fl_plugin_api_rec {
   string (*wastrsave)(string s);
 
   /* Return failure, with the given error message. */
-  void (*fail)(bool append_trace, g_ptr redex, const char* fmt, ...);
+  void (*fail)(bool append_trace, g_ptr redex, const char *fmt, ...);
 
   /* Decrement the reference count of the given node. */
 #if TRACK_FREEING
@@ -64,13 +63,13 @@ typedef struct fl_plugin_api_rec {
   void (*dec_ref_cnt)(g_ptr node);
 #endif
 
-
   /* Increment the reference count of the given node. */
   void (*inc_ref_cnt)(g_ptr node);
 
-  /* Set the given redex to the given value for int, string, etc. respectively. */
+  /* Set the given redex to the given value for int, string, etc. respectively.
+   */
   void (*make_redex_small_int)(g_ptr node, long int i);
-  void (*make_redex_large_int)(g_ptr node, char* i);
+  void (*make_redex_large_int)(g_ptr node, char *i);
   void (*make_redex_double)(g_ptr node, double d);
   void (*make_redex_string)(g_ptr node, string s);
   void (*make_redex_nil)(g_ptr node);
@@ -81,7 +80,7 @@ typedef struct fl_plugin_api_rec {
 
   /* Create a new, garbage-collected, node for the given value. */
   g_ptr (*new_small_int)(long int i);
-  g_ptr (*new_large_int)(char* i);
+  g_ptr (*new_large_int)(char *i);
   g_ptr (*new_double)(double d);
   g_ptr (*new_bool)(formula b);
   g_ptr (*new_string)(string s);
@@ -98,9 +97,10 @@ typedef struct fl_plugin_api_rec {
   int (*is_nil)(g_ptr redex);
 
   /* Get the value of the given node as an arbitrary precision integer. */
-  void* (*get_int)(g_ptr node);
+  void *(*get_int)(g_ptr node);
 
-  /* Get the value of the given node as a double precision floating point number. */
+  /* Get the value of the given node as a double precision floating point
+   * number. */
   double (*get_double)(g_ptr node);
 
   /* Get head of a list node. */
@@ -116,7 +116,7 @@ typedef struct fl_plugin_api_rec {
   string (*get_string)(g_ptr node);
 
   /* Get the value of the given node as a pointer to an external object. */
-  void* (*get_ext_obj)(g_ptr node);
+  void *(*get_ext_obj)(g_ptr node);
 
   /* Apply the given lambda node to the given argument node. */
   g_ptr (*make_apply)(g_ptr f, g_ptr x);
@@ -157,11 +157,10 @@ typedef struct fl_plugin_api_rec {
 /* The fixity of an fl function. */
 typedef enum { NO_FIXITY, PREFIX, INFIXL, INFIXR, POSTFIX } fl_fun_fixity;
 
-
 /* Structure representing a single function exported to fl from an fl plugin. */
 typedef struct fl_plugin_fun_rec {
   /* Name of the function. Needs to be a valid fl identifier. */
-  char* name;
+  char *name;
 
   /* Strictness signature of the function's arguments.
    * Consists of a string of ones and zeroes, where a one denotes a strict
@@ -169,7 +168,7 @@ typedef struct fl_plugin_fun_rec {
    * For instance, a function with two strict arguments would have
    * the strictness signatures "11".
    */
-  char* strictness;
+  char *strictness;
 
   /* Is the function non-lazy? */
   bool non_lazy;
@@ -189,21 +188,20 @@ typedef struct fl_plugin_fun_rec {
   /* Pointer to the code implementing the export's functionality. */
   void (*fun_ptr)(g_ptr);
 } fl_plugin_fun_rec;
-typedef fl_plugin_fun_rec* fl_plugin_fun;
-
+typedef fl_plugin_fun_rec *fl_plugin_fun;
 
 /* Structure representing a single type exported to fl from an fl plugin. */
 typedef struct fl_plugin_type_rec {
   /* Name of the type. */
-  char* name;
+  char *name;
 
   /* Hooks to be called on garbage collection. */
   void (*mark)(pointer p);
   void (*sweep)();
 
   /* Functions for saving/loading values of the type. */
-  void (*save)(FILE* fp, pointer p);
-  pointer (*load)(FILE* fp);
+  void (*save)(FILE *fp, pointer p);
+  pointer (*load)(FILE *fp);
 
   /* Convert the given object into some string representation. */
   string (*obj2string)(pointer p);
@@ -217,25 +215,25 @@ typedef struct fl_plugin_type_rec {
   pointer (*gmap)(gmap_info_ptr ip, pointer a);
   pointer (*gmap2)(gmap_info_ptr ip, pointer a, pointer b);
 
-  /* OUT: the class id of the type; use with make_redex_ext_obj, for instance. */
+  /* OUT: the class id of the type; use with make_redex_ext_obj, for instance.
+   */
   int class;
 
   /* OUT: the type expression of the type */
   typeExp_ptr type;
 } fl_plugin_type_rec;
-typedef fl_plugin_type_rec* fl_plugin_type;
-
+typedef fl_plugin_type_rec *fl_plugin_type;
 
 /* Metadata for an fl plugin. */
 typedef struct fl_plugin_rec {
   /* Name of plugin. Currently mainly for diagnostic messages. */
-  char* name;
+  char *name;
 
   /* Version of the plugin. */
   int version;
 
   /* Required ABI version. */
-  char* abi_version;
+  char *abi_version;
 
   /* Number of exported functions. */
   int num_funs;

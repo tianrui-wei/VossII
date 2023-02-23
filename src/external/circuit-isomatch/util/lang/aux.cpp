@@ -10,16 +10,15 @@
 #include <cstdlib>
 using namespace std;
 
-CircuitGroup* parse(const char* path) {
-    FILE* fPtr = fopen(path, "r"); // Sanity checks? What sanity checks?
-    CircuitGroup* circuit = doParse(fPtr);
-    fclose(fPtr);
+CircuitGroup *parse(const char *path) {
+  FILE *fPtr = fopen(path, "r"); // Sanity checks? What sanity checks?
+  CircuitGroup *circuit = doParse(fPtr);
+  fclose(fPtr);
 
-    if(circuit == NULL) {
-        fprintf(stderr, "error: parsing failed.\n");
-        exit(1);
-    }
+  if (circuit == NULL) {
+    fprintf(stderr, "error: parsing failed.\n");
+    exit(1);
+  }
 
-    return circuit;
+  return circuit;
 }
-

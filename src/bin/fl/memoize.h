@@ -4,10 +4,10 @@
 //-------------------------------------------------------------------
 
 /********************************************************************
-*                                                                   *
-*     Original author: Carl-Johan Seger 1995                        *
-*                                                                   *
-*********************************************************************/
+ *                                                                   *
+ *     Original author: Carl-Johan Seger 1995                        *
+ *                                                                   *
+ *********************************************************************/
 /* memoize.h -- header for memoize.c */
 
 #ifdef EXPORT_FORWARD_DECL
@@ -19,7 +19,7 @@
 /* ----------------------- Main include file ------------------------------- */
 #ifndef MEMOIZE_H
 #define MEMOIZE_H
-#include "fl.h"	/* Global data types and include files 		     */
+#include "fl.h" /* Global data types and include files 		     */
 
 #endif /* MEMOIZE_H */
 #endif /* EXPORT_FORWARD_DECL */

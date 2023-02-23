@@ -4,16 +4,16 @@
 //-------------------------------------------------------------------
 
 /********************************************************************
-*                                                                   *
-*     Original author: Carl-Johan Seger 1993                        *
-*                                                                   *
-*********************************************************************/
+ *                                                                   *
+ *     Original author: Carl-Johan Seger 1993                        *
+ *                                                                   *
+ *********************************************************************/
 /* morestr.h -- header for morestr.c */
 
 #ifndef _MORESTR_H
 #define _MORESTR_H
 #include "types.h"
 
-bool		str2int(string s, int *ip);
+bool str2int(string s, int *ip);
 
 #endif /* _MORESTR_H */

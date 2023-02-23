@@ -21,142 +21,135 @@
  * one).
  */
 class DynBitset {
-    private:
-        typedef long unsigned Word;
+private:
+  typedef long unsigned Word;
 
-    public:
-        /// Thrown whenever two `DynBitset`s of mismatched sizes are used
-        /// together
-        class SizeMismatch : public std::exception {};
+public:
+  /// Thrown whenever two `DynBitset`s of mismatched sizes are used
+  /// together
+  class SizeMismatch : public std::exception {};
 
-        class Reference {
-            friend class DynBitset;
-            public:
-                /// Sets the bit to a given value
-                Reference& operator=(bool);
-                /// Sets the bit to a given value
-                Reference& operator=(const Reference&);
+  class Reference {
+    friend class DynBitset;
 
-                /// Flips and returns the bit
-                inline bool operator~() const {
-                    (*word) = ~(*word);
-                    return *this;
-                }
+  public:
+    /// Sets the bit to a given value
+    Reference &operator=(bool);
+    /// Sets the bit to a given value
+    Reference &operator=(const Reference &);
 
-                /// Value of the reference
-                inline operator bool() const {
-                    return (*word) & (1lu << pos);
-                }
+    /// Flips and returns the bit
+    inline bool operator~() const {
+      (*word) = ~(*word);
+      return *this;
+    }
 
-                /// In-place flips the bit
-                Reference& flip() {
-                    (*word) ^= (1lu << pos);
-                    return *this;
-                }
+    /// Value of the reference
+    inline operator bool() const { return (*word) & (1lu << pos); }
 
-                /// Sets the bit (slightly faster than ` = true`)
-                inline void set() {
-                    (*word) |= (1lu << pos);
-                }
+    /// In-place flips the bit
+    Reference &flip() {
+      (*word) ^= (1lu << pos);
+      return *this;
+    }
 
-                /// Resets the bit (slightly faster than ` = false`)
-                void reset() {
-                    (*word) &= ~(1lu << pos);
-                }
+    /// Sets the bit (slightly faster than ` = true`)
+    inline void set() { (*word) |= (1lu << pos); }
 
-            private:
-                Reference(DynBitset::Word* word, size_t pos)
-                    : word(word), pos(pos) {}
-                Reference (const Reference&) = default;
+    /// Resets the bit (slightly faster than ` = false`)
+    void reset() { (*word) &= ~(1lu << pos); }
 
-                DynBitset::Word* word;
-                size_t pos;
-        };
-        friend class Reference;
+  private:
+    Reference(DynBitset::Word *word, size_t pos) : word(word), pos(pos) {}
+    Reference(const Reference &) = default;
 
-        // === Constructors and default operations ===
+    DynBitset::Word *word;
+    size_t pos;
+  };
+  friend class Reference;
 
-        /// `size` is expressed in bits. Initializes to zeroes.
-        DynBitset(size_t size);
-        DynBitset(const DynBitset& oth);
-        ~DynBitset();
-        void operator=(const DynBitset& oth);
-        DynBitset& operator=(DynBitset&& oth) = delete;
-    private:
-        /// Constructor with pre-set value
-        DynBitset(size_t size, Word* words);
-        DynBitset(DynBitset&& oth);
+  // === Constructors and default operations ===
 
-    public:
-        // === Other methods ===
+  /// `size` is expressed in bits. Initializes to zeroes.
+  DynBitset(size_t size);
+  DynBitset(const DynBitset &oth);
+  ~DynBitset();
+  void operator=(const DynBitset &oth);
+  DynBitset &operator=(DynBitset &&oth) = delete;
 
-        inline size_t size() const { return size_; }
+private:
+  /// Constructor with pre-set value
+  DynBitset(size_t size, Word *words);
+  DynBitset(DynBitset &&oth);
 
-        /// Constant bit access operator
-        inline bool operator[](size_t pos) const {
-            return (data[pos/word_size]) & (1lu << (pos % word_size));
-        }
+public:
+  // === Other methods ===
 
-        /// Alterable bit reference
-        Reference operator[](size_t pos);
+  inline size_t size() const { return size_; }
 
-        ///< In-place bitwise and
-        DynBitset& operator &=(const DynBitset& oth);
+  /// Constant bit access operator
+  inline bool operator[](size_t pos) const {
+    return (data[pos / word_size]) & (1lu << (pos % word_size));
+  }
 
-        /// In-place bitwise or
-        DynBitset& operator|=(const DynBitset& oth);
+  /// Alterable bit reference
+  Reference operator[](size_t pos);
 
-        /// In-place bitwise xor
-        DynBitset& operator^=(const DynBitset& oth);
+  ///< In-place bitwise and
+  DynBitset &operator&=(const DynBitset &oth);
 
-        /// In-place bitwise flip
-        DynBitset& flip();
+  /// In-place bitwise or
+  DynBitset &operator|=(const DynBitset &oth);
 
-        /// Bitwise AND of two `DynBitset`s
-        DynBitset operator &(const DynBitset& oth) const;
+  /// In-place bitwise xor
+  DynBitset &operator^=(const DynBitset &oth);
 
-        /// Bitwise OR of two `DynBitset`s
-        DynBitset operator|(const DynBitset& oth) const;
+  /// In-place bitwise flip
+  DynBitset &flip();
 
-        /// Bitwise XOR of two `DynBitset`s
-        DynBitset operator^(const DynBitset& oth) const;
+  /// Bitwise AND of two `DynBitset`s
+  DynBitset operator&(const DynBitset &oth) const;
 
-        /// Bitwise flip
-        DynBitset operator~() const;
+  /// Bitwise OR of two `DynBitset`s
+  DynBitset operator|(const DynBitset &oth) const;
 
-        /// Sets all bits to false
-        void reset();
+  /// Bitwise XOR of two `DynBitset`s
+  DynBitset operator^(const DynBitset &oth) const;
 
-        /// Checks if any bit is true
-        bool any() const;
+  /// Bitwise flip
+  DynBitset operator~() const;
 
-        /// Checks if any bit above the `pos`th (incl.) is true
-        bool anyOver(size_t pos) const;
+  /// Sets all bits to false
+  void reset();
 
-        /// Checks if a single bit is set
-        /** Checks whether a single bit is set. If so, returns this bit's
-         * position; if no or multiple bits are set, returns -1. */
-        int singleBit() const;
+  /// Checks if any bit is true
+  bool any() const;
 
-        /// Dumps the DynBitset to an hex representation
-        std::string dump() const;
+  /// Checks if any bit above the `pos`th (incl.) is true
+  bool anyOver(size_t pos) const;
 
-    private:
-        inline void checkSize(const DynBitset& oth) const {
-            if(size_ != oth.size_)
-                throw SizeMismatch();
-        }
+  /// Checks if a single bit is set
+  /** Checks whether a single bit is set. If so, returns this bit's
+   * position; if no or multiple bits are set, returns -1. */
+  int singleBit() const;
 
-        inline size_t nbWords() const {
-            return (size_ + word_size - 1) / word_size;
-        }
+  /// Dumps the DynBitset to an hex representation
+  std::string dump() const;
 
-        /** Aux function for `singleBit`, does the same on a single word.
-         * Assumes every bit past `upTo` is false. */
-        int whichBit(Word word, int offset = 0) const;
+private:
+  inline void checkSize(const DynBitset &oth) const {
+    if (size_ != oth.size_)
+      throw SizeMismatch();
+  }
 
-        const size_t size_;
-        Word* data;
+  inline size_t nbWords() const { return (size_ + word_size - 1) / word_size; }
 
-        constexpr static size_t word_size = sizeof(Word) * 8;
+  /** Aux function for `singleBit`, does the same on a single word.
+   * Assumes every bit past `upTo` is false. */
+  int whichBit(Word word, int offset = 0) const;
+
+  const size_t size_;
+  Word *data;
+
+  constexpr static size_t word_size = sizeof(Word) * 8;
 };

@@ -4,69 +4,69 @@
 //-------------------------------------------------------------------
 
 /********************************************************************
-*                                                                   *
-*     Original author: Mark Greenstreet 1994                        *
-*     Extensively edited by Carl-Johan Seger, 1994, 2016	    *
-*                                                                   *
-*********************************************************************/
+ *                                                                   *
+ *     Original author: Mark Greenstreet 1994                        *
+ *     Extensively edited by Carl-Johan Seger, 1994, 2016	    *
+ *                                                                   *
+ *********************************************************************/
 /* arb_prec.h -- header for arb_prec.c */
 #ifdef EXPORT_FORWARD_DECL
 /* --- Forward declarations that need to be exported to earlier .h files --- */
-typedef long int	*arbi_T;
+typedef long int *arbi_T;
 
 /* ----- Function prototypes for public functions ----- */
-void		Init_arbi();
+void Init_arbi();
 
 /* Conversion routines */
-arbi_T		Arbi_FromString(char *s, int base);
-char		*Arbi_ToString(arbi_T n, int base);
-arbi_T		Arbi_FromInt(long int i);
-long int	*Arbi_ToInt(arbi_T x);
+arbi_T Arbi_FromString(char *s, int base);
+char *Arbi_ToString(arbi_T n, int base);
+arbi_T Arbi_FromInt(long int i);
+long int *Arbi_ToInt(arbi_T x);
 
 /* Arithmetic operations */
-arbi_T 		Arbi_cpy(arbi_T x);
-arbi_T		Arbi_neg(arbi_T x);
-arbi_T		Arbi_abs(arbi_T x);
-arbi_T		Arbi_add(arbi_T x, arbi_T y);
-arbi_T		Arbi_sub(arbi_T x, arbi_T y);
-arbi_T		Arbi_mlt(arbi_T x, arbi_T y);
-arbi_T		Arbi_div(arbi_T x, arbi_T y);
-arbi_T		Arbi_mod(arbi_T x, arbi_T y);
-arbi_T		Arbi_gcd(arbi_T x, arbi_T y);
-bool		Arbi_IsNegative(arbi_T x);
+arbi_T Arbi_cpy(arbi_T x);
+arbi_T Arbi_neg(arbi_T x);
+arbi_T Arbi_abs(arbi_T x);
+arbi_T Arbi_add(arbi_T x, arbi_T y);
+arbi_T Arbi_sub(arbi_T x, arbi_T y);
+arbi_T Arbi_mlt(arbi_T x, arbi_T y);
+arbi_T Arbi_div(arbi_T x, arbi_T y);
+arbi_T Arbi_mod(arbi_T x, arbi_T y);
+arbi_T Arbi_gcd(arbi_T x, arbi_T y);
+bool Arbi_IsNegative(arbi_T x);
 
 /* Bitvector operations (view the integers as unsigned) */
-arbi_T		Arbi_bvAND(arbi_T x, arbi_T y);
-arbi_T		Arbi_bvOR(arbi_T x, arbi_T y);
-arbi_T		Arbi_bvXOR(arbi_T x, arbi_T y);
-arbi_T		Arbi_bvNOT(arbi_T x);
+arbi_T Arbi_bvAND(arbi_T x, arbi_T y);
+arbi_T Arbi_bvOR(arbi_T x, arbi_T y);
+arbi_T Arbi_bvXOR(arbi_T x, arbi_T y);
+arbi_T Arbi_bvNOT(arbi_T x);
 
 /* Comparisons */
-int		Arbi_cmp(arbi_T x, arbi_T y);
-#define arbi_LESS  -1
-#define arbi_EQ     0
-#define arbi_GREAT  1
+int Arbi_cmp(arbi_T x, arbi_T y);
+#define arbi_LESS -1
+#define arbi_EQ 0
+#define arbi_GREAT 1
 
 /* Memory allocation and garbage collection */
-void		*Arbi_alloc(unsigned nbytes);
-void 		Arbi_free(arbi_T n);
-void		*Arbi_collect(void *p);
-void		Arbi_mark(arbi_T p);
-void		Arbi_sweep(void);
+void *Arbi_alloc(unsigned nbytes);
+void Arbi_free(arbi_T n);
+void *Arbi_collect(void *p);
+void Arbi_mark(arbi_T p);
+void Arbi_sweep(void);
 
 /* Reporting exceptions */
-char		*Arbi_errmsg(void);
-void		Arbi_die(char *source, char *fn, char *msg);
+char *Arbi_errmsg(void);
+void Arbi_die(char *source, char *fn, char *msg);
 
 /* Misc */
-unsigned int	Arbi_hash (arbi_T value, unsigned int n);
+unsigned int Arbi_hash(arbi_T value, unsigned int n);
 
 #else /* EXPORT_FORWARD_DECL */
 /* ----------------------- Main include file ------------------------------- */
 
 #ifndef ARB_PREC_H
 #define ARB_PREC_H
-#include "fl.h"	/* Global data types and include files 		     */
+#include "fl.h" /* Global data types and include files 		     */
 
 /* For old-style C, the definitions of the 'long' and 'short' types are
  * machine dependent.  Is this also true for ansi-C?  If so, then the
@@ -76,17 +76,17 @@ typedef long int Word;
 typedef int HalfWord;
 #define WordSize 64
 #define HalfSize 32
-#define Hmask (~(~((unsigned long) 0) << (unsigned long) HalfSize))
+#define Hmask (~(~((unsigned long)0) << (unsigned long)HalfSize))
 #define s_Word long int
 #define s_HalfWord int
-#define MinWord (((long) 1) << (WordSize-1))
+#define MinWord (((long)1) << (WordSize - 1))
 #define MaxWord (~MinWord)
-#define MinHalf (((int) 1) << HalfSize)
+#define MinHalf (((int)1) << HalfSize)
 #define MaxHalf (~MinHalf)
-#define Abs(x) ((x>=0) ? (x) : -(x))
+#define Abs(x) ((x >= 0) ? (x) : -(x))
 
 typedef short Length_T;
-#define Length(x)	(*((Length_T *)(((char *) (x))-2)))
+#define Length(x) (*((Length_T *)(((char *)(x)) - 2)))
 
 /* An arbitrary precision integer (henceforth called arb_int) is represented
  * by an array of Words.  Let x be of type arbi_T.  The length of the array
@@ -103,16 +103,14 @@ typedef short Length_T;
  * uses fast Fermat number transforms for large multiplications).
  */
 
-#define Split(w, l, h) \
-        ((l = (w) & Hmask), (h = ((unsigned s_Word)(w) >> HalfSize)))
-#define Merge(l, h) (((l) & Hmask) | ((h) << HalfSize))
-#define Acc(l, h, w) \
-        ((l += (w) & Hmask), (h += (unsigned s_Word)(w) >> HalfSize))
+#define Split(w, l, h)                                                         \
+  ((l = (w)&Hmask), (h = ((unsigned s_Word)(w) >> HalfSize)))
+#define Merge(l, h) (((l)&Hmask) | ((h) << HalfSize))
+#define Acc(l, h, w) ((l += (w)&Hmask), (h += (unsigned s_Word)(w) >> HalfSize))
 #define Carry(l, h) (h += (l) >> HalfSize)
 
 #define MaxBlock 1000
-#define BlockSize ((1 << 16)*sizeof(void *))
-
+#define BlockSize ((1 << 16) * sizeof(void *))
 
 /************************************************************************
 
@@ -124,7 +122,7 @@ About storage, garbage collection, etc.:
     Functions that return arbi_T's come in two flavors:
       arbi_name:  returns garbage collected storage.
       arbi__name: returns a pointer to memory that won't be garbage collected.
-		      Such blocks can be freed by an explicit call to arbi_free.
+                      Such blocks can be freed by an explicit call to arbi_free.
   If p is a pointer to a block that is not garbage collectible, calling
   arbi_collect(p) will mark p as collectible.  To do a garbage collection,
   first call arbi_mark for each block allocated by this package that is
@@ -135,22 +133,22 @@ About storage, garbage collection, etc.:
 
 About conversion routines:
     arbi_FromString(char *s, int base)
-	Convert the string s to an arbi_T.  base tells what base to use
-	for the conversion.  If 10 < base <= 36, 'a' - 'z' are used for
-	the extra digits in the obvious way.  This is case insensitive
-	(i.e. F02C = f02c).
-	arbi_FromString fails if s cannot be interpreted as a number in
-	the given base, or base < 0, or base > 36.
+        Convert the string s to an arbi_T.  base tells what base to use
+        for the conversion.  If 10 < base <= 36, 'a' - 'z' are used for
+        the extra digits in the obvious way.  This is case insensitive
+        (i.e. F02C = f02c).
+        arbi_FromString fails if s cannot be interpreted as a number in
+        the given base, or base < 0, or base > 36.
     arbi_ToString(arbi_T n, int base)
-	Convert the arbi_T n to a string.  base tells what base to use.
-	If 10 < base <= 36, 'a' - 'z' are used for the extra digits.
-	arbi_ToString fails if base < 0 or base > 36.
+        Convert the arbi_T n to a string.  base tells what base to use.
+        If 10 < base <= 36, 'a' - 'z' are used for the extra digits.
+        arbi_ToString fails if base < 0 or base > 36.
     arbi_FromInt(long int i)
-	Convert the long int i to an arbi_T.
-	No failures.
+        Convert the long int i to an arbi_T.
+        No failures.
     arbi_ToInt(arbi_T n)
-	Returns a pointer to a long int with the same value as the arbi_T n.
-	arbi_ToInt fails if n doesn't fit in a long int.
+        Returns a pointer to a long int with the same value as the arbi_T n.
+        arbi_ToInt fails if n doesn't fit in a long int.
 
 About arithmetic operations:
   All arithmetic routines return their results in a newly allocated piece

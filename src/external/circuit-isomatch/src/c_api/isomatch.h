@@ -29,33 +29,33 @@ extern "C" {
 /* Type declarations                                                         */
 /*****************************************************************************/
 typedef uint64_t sign_t;         ///< Type of a circuit signature
-typedef void* circuit_handle;   ///< Value representing a circuit
-typedef void* expr_handle;      ///< Value representing an expression
-typedef const char* wire_handle;    ///< A wire name
+typedef void *circuit_handle;    ///< Value representing a circuit
+typedef void *expr_handle;       ///< Value representing an expression
+typedef const char *wire_handle; ///< A wire name
 
 /// Linked list of `circuit_handle`
 typedef struct circuit_list {
-    circuit_handle circ;             ///< Data for this element
-    struct circuit_list* next;       ///< Next element in the list
+  circuit_handle circ;       ///< Data for this element
+  struct circuit_list *next; ///< Next element in the list
 } circuit_list;
 
 /// Linked list of `wire_handle`
 typedef struct wire_list {
-    wire_handle wire;               ///< Data for this element
-    struct wire_list* next;         ///< Next element in the list
+  wire_handle wire;       ///< Data for this element
+  struct wire_list *next; ///< Next element in the list
 } wire_list;
 
 /// Result for a single subcircuit-find match
 typedef struct {
-    circuit_list* parts;
-    wire_list* inputs;
-    wire_list* outputs;
+  circuit_list *parts;
+  wire_list *inputs;
+  wire_list *outputs;
 } single_match;
 
 /// Subcircuit-find match results
 typedef struct match_results {
-    single_match match;             ///< Data for this element
-    struct match_results* next;     ///< Next element in the list
+  single_match match;         ///< Data for this element
+  struct match_results *next; ///< Next element in the list
 } match_results;
 
 /*****************************************************************************/
@@ -68,16 +68,16 @@ typedef struct match_results {
 
 /// Return codes of the `int`-returning functions in this API
 typedef enum isom_rc {
-    ISOM_RC_OK      = 0, ///< Everything went fine
-    ISOM_RC_NULLPTR = 1, ///< One of the parameters was a null pointer
-    ISOM_RC_DOMAIN  = 2, ///< One of the parameters has the wrong pointer type
-    ISOM_RC_NO_PARENT = 3, ///< A circuit outside of a group was used, while
-                           ///< it needed to be in a group
-    ISOM_RC_BADHEX = 4,    ///< Non hexadecimal string was supplied
-    ISOM_RC_BAD_FREE = 5,  ///< Attempted to `free` an unregistered pointer
-    ISOM_RC_OUT_OF_RANGE = 6, ///< A supplied (int) value was out of range
-    ISOM_RC_NOT_CONNECTED = 7, ///< This pin is not connected to any wire
-    ISOM_RC_ERROR   = 255, ///< An undefined error occurred
+  ISOM_RC_OK = 0,        ///< Everything went fine
+  ISOM_RC_NULLPTR = 1,   ///< One of the parameters was a null pointer
+  ISOM_RC_DOMAIN = 2,    ///< One of the parameters has the wrong pointer type
+  ISOM_RC_NO_PARENT = 3, ///< A circuit outside of a group was used, while
+                         ///< it needed to be in a group
+  ISOM_RC_BADHEX = 4,    ///< Non hexadecimal string was supplied
+  ISOM_RC_BAD_FREE = 5,  ///< Attempted to `free` an unregistered pointer
+  ISOM_RC_OUT_OF_RANGE = 6,  ///< A supplied (int) value was out of range
+  ISOM_RC_NOT_CONNECTED = 7, ///< This pin is not connected to any wire
+  ISOM_RC_ERROR = 255,       ///< An undefined error occurred
 } isom_rc;
 
 /*****************************/
@@ -89,7 +89,7 @@ isom_rc isom_last_error();
 
 /** Return a human-friendly string describing the given error.
  * Note that you don't have to `free` the returned string. */
-const char* isom_strerror(isom_rc err_code);
+const char *isom_strerror(isom_rc err_code);
 
 /*****************************************************************************/
 /* Enumerations                                                              */
@@ -101,29 +101,29 @@ const char* isom_strerror(isom_rc err_code);
 
 /** Operator for `ExprBinOp` */
 enum isom_expr_binop {
-    BAnd,           ///< Bitwise and
-    BOr,            ///< Bitwise or
-    BXor,           ///< Bitwise exclusive or
-    BAdd,           ///< Addition
-    BSub,           ///< Subtraction
-    BMul,           ///< Multiplication
-    BDiv,           ///< Division
-    BMod,           ///< Modulus
-    BLsr,           ///< Logical shift right
-    BLsl,           ///< Logical shift left
-    BAsr,           ///< Arithmetic shift right
+  BAnd, ///< Bitwise and
+  BOr,  ///< Bitwise or
+  BXor, ///< Bitwise exclusive or
+  BAdd, ///< Addition
+  BSub, ///< Subtraction
+  BMul, ///< Multiplication
+  BDiv, ///< Division
+  BMod, ///< Modulus
+  BLsr, ///< Logical shift right
+  BLsl, ///< Logical shift left
+  BAsr, ///< Arithmetic shift right
 };
 
 /** Operator for `ExprUnOp` */
 enum isom_expr_unop {
-    UNot,           ///< Unary bitwise not
+  UNot, ///< Unary bitwise not
 };
 
 /** Operator for `ExprUnOpCst` */
 enum isom_expr_unop_cst {
-    UCLsr,          ///< Logical shift right of fixed shift
-    UCLsl,          ///< Logical shift left of fixed shift
-    UCAsr,          ///< Arithmetic shift right of fixed shift
+  UCLsr, ///< Logical shift right of fixed shift
+  UCLsl, ///< Logical shift left of fixed shift
+  UCAsr, ///< Arithmetic shift right of fixed shift
 };
 
 /*****************************************************************************/
@@ -149,9 +149,8 @@ int isom_unplug_circuit(circuit_handle circuit);
 /****************/
 
 /// Build an assert gate
-circuit_handle build_assert(circuit_handle parent,
-        const char* name,
-        expr_handle expr);
+circuit_handle build_assert(circuit_handle parent, const char *name,
+                            expr_handle expr);
 
 /** Add an input wire to a given gate (order matters!)
  * @return 0 on success, > 0 on failure
@@ -173,18 +172,16 @@ int build_comb_add_input(circuit_handle self, wire_handle wire);
 /** Add an output wire, alongside with an expression, to a given comb gate
  * @return 0 on success, > 0 on failure
  */
-int build_comb_add_output(circuit_handle self,
-        wire_handle wire,
-        expr_handle expr);
+int build_comb_add_output(circuit_handle self, wire_handle wire,
+                          expr_handle expr);
 
 /***************/
 /* Delay gates */
 /***************/
 
 /// Build a delay gate
-circuit_handle build_delay(circuit_handle parent,
-        wire_handle input,
-        wire_handle output);
+circuit_handle build_delay(circuit_handle parent, wire_handle input,
+                           wire_handle output);
 
 /*************************/
 /* Hierarchy group gates */
@@ -194,7 +191,7 @@ circuit_handle build_delay(circuit_handle parent,
  * functions below.
  * A group does not necessarily belong to another group, thus there is no
  * `parent` argument, and you must call `build_group_add_child` yourself. */
-circuit_handle build_group(const char* name);
+circuit_handle build_group(const char *name);
 
 /** Add the given circuit as a child of the given group.
  * @return 0 on success, > 0 on failure
@@ -207,9 +204,8 @@ int build_group_add_child(circuit_handle self, circuit_handle child);
  * @param formal The name of the pin when accessed from outside the group
  * @return 0 on success, > 0 on failure
  */
-int build_group_add_input(circuit_handle self,
-        wire_handle actual,
-        wire_handle formal);
+int build_group_add_input(circuit_handle self, wire_handle actual,
+                          wire_handle formal);
 
 /** Add an output pin to the given circuit group.
  * @param self The group to work on
@@ -217,19 +213,16 @@ int build_group_add_input(circuit_handle self,
  * @param formal The name of the pin when accessed from outside the group
  * @return 0 on success, > 0 on failure
  */
-int build_group_add_output(circuit_handle self,
-        wire_handle actual,
-        wire_handle formal);
+int build_group_add_output(circuit_handle self, wire_handle actual,
+                           wire_handle formal);
 
 /******************/
 /* Tristate gates */
 /******************/
 
 /// Build a tristate gate
-circuit_handle build_tristate(circuit_handle parent,
-        wire_handle from,
-        wire_handle to,
-        wire_handle enable);
+circuit_handle build_tristate(circuit_handle parent, wire_handle from,
+                              wire_handle to, wire_handle enable);
 
 /***************/
 /* Expressions */
@@ -241,23 +234,21 @@ expr_handle build_expr_const(unsigned val);
 /** Build a long constant expression node
  * @param value Hexadecimal string [0-9a-fA-F]+
  */
-expr_handle build_expr_longconst(const char* value);
+expr_handle build_expr_longconst(const char *value);
 
 /// Build a variable expression node referring to the `n`th input of the gate
 expr_handle build_expr_var(int input_pin);
 
 /// Build a binary operator expression node
-expr_handle build_expr_binop(enum isom_expr_binop op,
-        expr_handle left,
-        expr_handle right);
+expr_handle build_expr_binop(enum isom_expr_binop op, expr_handle left,
+                             expr_handle right);
 
 /// Build a unary operator expression node
 expr_handle build_expr_unop(enum isom_expr_unop op, expr_handle expr);
 
 /// Build a unary operator with constant parameter expression node
-expr_handle build_expr_unop_cst(enum isom_expr_unop_cst op,
-        int param,
-        expr_handle expr);
+expr_handle build_expr_unop_cst(enum isom_expr_unop_cst op, int param,
+                                expr_handle expr);
 
 /// Build a slice expression node (beginning inclusive, end exclusive)
 expr_handle build_expr_slice(expr_handle expr, unsigned beg, unsigned end);
@@ -305,11 +296,11 @@ sign_t sign_with_precision(circuit_handle circuit, unsigned precision_level);
  * The list structures, etc. are `malloc`'d and must be free'd on the
  * caller's side whenever they're not needed anymore using `free_match_result`.
  */
-match_results* subcircuit_find(circuit_handle needle, circuit_handle haystack);
+match_results *subcircuit_find(circuit_handle needle, circuit_handle haystack);
 
 /** Free a `match_results`. This *DOES NOT* free the `needle` and `haystack`
  * circuits used during the match! */
-void free_match_results(match_results* res);
+void free_match_results(match_results *res);
 
 /*****************************************************************************/
 /* Mark and sweep                                                            */
@@ -330,7 +321,6 @@ void isom_mark_circuit(circuit_handle handle);
 /** Sweeps (frees every value that is not marked, directly or recursively) the
  * previously allocated values. */
 void isom_sweep();
-
 
 #ifdef __cplusplus
 }

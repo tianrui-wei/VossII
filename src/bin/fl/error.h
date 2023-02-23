@@ -4,10 +4,10 @@
 //-------------------------------------------------------------------
 
 /********************************************************************
-*                                                                   *
-*     Original author: Carl-Johan Seger 1990                        *
-*                                                                   *
-*********************************************************************/
+ *                                                                   *
+ *     Original author: Carl-Johan Seger 1990                        *
+ *                                                                   *
+ *********************************************************************/
 /* error.h -- header for error.c */
 
 #ifdef EXPORT_FORWARD_DECL
@@ -34,7 +34,7 @@ string make_tcl_safe(string s);
 /* ----------------------- Main include file ------------------------------- */
 #ifndef ERROR_H
 #define ERROR_H
-#include "fl.h"	/* Global data types and include files 		     */
+#include "fl.h" /* Global data types and include files 		     */
 #include <stdarg.h>
 
 #endif /* ERROR_H */

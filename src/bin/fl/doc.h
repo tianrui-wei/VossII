@@ -19,7 +19,7 @@ void Doc_Install_Functions();
 #ifndef DOC_H
 #define DOC_H
 
-#include "fl.h"	/* Global data types and include files */
+#include "fl.h" /* Global data types and include files */
 
 #endif /* DOC_H */
 #endif /* EXPORT_FORWARD_DECL */

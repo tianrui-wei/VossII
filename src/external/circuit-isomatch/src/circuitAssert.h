@@ -11,80 +11,67 @@
 #include "gateExpression.h"
 
 class CircuitAssert : public CircuitTree {
-    protected:
-        // ========= I/O ITERATOR =============================================
-        class InnerIoIter : public CircuitTree::InnerIoIter {
-                typedef std::vector<WireId*>::const_iterator LowIter;
-                LowIter ptr;
-            public:
-                InnerIoIter(LowIter lowIter) : ptr(lowIter) {}
-                InnerIoIter(const InnerIoIter& it)
-                    : ptr(it.ptr) {}
-                virtual void operator++();
-                virtual WireId* operator*() { return *ptr; }
-                virtual InnerIoIter* clone() const {
-                    return new InnerIoIter(*this);
-                }
+protected:
+  // ========= I/O ITERATOR =============================================
+  class InnerIoIter : public CircuitTree::InnerIoIter {
+    typedef std::vector<WireId *>::const_iterator LowIter;
+    LowIter ptr;
 
-            protected:
-                virtual bool equal(const CircuitTree::InnerIoIter& oth_) const
-                {
-                    const InnerIoIter& oth =
-                        static_cast<const InnerIoIter&>(oth_);
-                    return ptr == oth.ptr;
-                }
-        };
+  public:
+    InnerIoIter(LowIter lowIter) : ptr(lowIter) {}
+    InnerIoIter(const InnerIoIter &it) : ptr(it.ptr) {}
+    virtual void operator++();
+    virtual WireId *operator*() { return *ptr; }
+    virtual InnerIoIter *clone() const { return new InnerIoIter(*this); }
 
-    public:
-        IoIter inp_begin() const {
-            return IoIter(
-                    new InnerIoIter(gateInputs.begin())
-                    );
-        }
-        IoIter out_begin() const {
-            return IoIter(
-                    new InnerIoIter(gateInputs.end())
-                    );
-        }
-        IoIter out_end() const {
-            return out_begin();
-        }
-        // ========= END I/O ITERATOR =========================================
+  protected:
+    virtual bool equal(const CircuitTree::InnerIoIter &oth_) const {
+      const InnerIoIter &oth = static_cast<const InnerIoIter &>(oth_);
+      return ptr == oth.ptr;
+    }
+  };
 
-        CircuitAssert(const std::string& name, ExpressionBase* expr);
+public:
+  IoIter inp_begin() const {
+    return IoIter(new InnerIoIter(gateInputs.begin()));
+  }
+  IoIter out_begin() const { return IoIter(new InnerIoIter(gateInputs.end())); }
+  IoIter out_end() const { return out_begin(); }
+  // ========= END I/O ITERATOR =========================================
 
-        /** Deletes the gate's expression */
-        virtual ~CircuitAssert();
+  CircuitAssert(const std::string &name, ExpressionBase *expr);
 
-        CircType circType() const { return CIRC_ASSERT; }
+  /** Deletes the gate's expression */
+  virtual ~CircuitAssert();
 
-        /// Adds `wire` as the next input for this gate.
-        void addInput(WireId* wire);
+  CircType circType() const { return CIRC_ASSERT; }
 
-        /** Gate's inputs */
-        const std::vector<WireId*>& inputs() const { return gateInputs; }
+  /// Adds `wire` as the next input for this gate.
+  void addInput(WireId *wire);
 
-        /** Gate's expression */
-        const ExpressionBase* expression() const { return gateExpr; }
+  /** Gate's inputs */
+  const std::vector<WireId *> &inputs() const { return gateInputs; }
 
-        /** Get gate's name */
-        const std::string name() const { return gateName; }
+  /** Gate's expression */
+  const ExpressionBase *expression() const { return gateExpr; }
 
-        // Documentation in CircuitTree*
-        size_t inputCount() const;
-        size_t outputCount() const;
-        WireId* nth_input(size_t circId) const;
-        WireId* nth_output(size_t circId) const;
+  /** Get gate's name */
+  const std::string name() const { return gateName; }
 
-        void toDot(std::basic_ostream<char>& out, int indent=0);
+  // Documentation in CircuitTree*
+  size_t inputCount() const;
+  size_t outputCount() const;
+  WireId *nth_input(size_t circId) const;
+  WireId *nth_output(size_t circId) const;
 
-    protected:
-        virtual sign_t innerSignature() const;
-        virtual bool innerEqual(CircuitTree* othTree);
+  void toDot(std::basic_ostream<char> &out, int indent = 0);
 
-    private:
-        std::string gateName;
-        std::vector<WireId*> gateInputs;
-        ExpressionBase* gateExpr;
+protected:
+  virtual sign_t innerSignature() const;
+  virtual bool innerEqual(CircuitTree *othTree);
+
+private:
+  std::string gateName;
+  std::vector<WireId *> gateInputs;
+  ExpressionBase *gateExpr;
 };
-

@@ -7,4 +7,4 @@
 
 #include <isomatch.h>
 
-CircuitGroup* parse(const char* path);
+CircuitGroup *parse(const char *path);
