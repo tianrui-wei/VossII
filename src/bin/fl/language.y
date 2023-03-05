@@ -203,6 +203,11 @@ extern int dbg_tst_line_cnt;
 		oll_ptr		fns;
 	    }			    overloads_t;
 	    g_ptr		    expr_t;
+		struct {
+			g_ptr expr;
+			g_ptr default_expr;
+			bool     ok;
+		} fn_arg_expr_t;
 	    cl_ptr		    cl_t;
 	    struct {
 		bool	    ok;
@@ -320,6 +325,7 @@ extern int dbg_tst_line_cnt;
 %type  <decl_list>	type_decl new_type_decl type_expr type
 %type  <overloads_t>	overload_list
 %type  <expr_t>		top_expr expr expr05 expr1 expr2 expr_list arg_expr
+%type	<fn_arg_expr_t> fn_arg_expr
 %type  <cl_t>		rev_expr_list
 %type  <decl_t>		decl cache_decl strict_decl fn_defs fn_def lhs_expr_list
 %type  <str_t>		var_or_infix
@@ -1040,11 +1046,12 @@ fn_def		: var_or_infix lhs_expr_list
 		    }
 		}
 		;
-lhs_expr_list	: arg_expr lhs_expr_list
+lhs_expr_list	: fn_arg_expr lhs_expr_list
 		{
-		    if( $1 != NULL && $2.ok ) {
+		    if( $1.ok && $2.ok ) {
 			g_ptr res;
-			res = TrArg($1, $2.expr, FALSE);
+            //TODO: invent new function?
+			res = TrArg($1.expr, $2.expr, FALSE);
 			if( res != NULL ) {
 			    Sprintf(buf, "_Q_%d", $2.cnt+1);
 			    $$.expr = Make_APPL_ND(res,
@@ -1688,6 +1695,42 @@ arg_expr	: expr1
 		}
 		;
 
+fn_arg_expr : arg_expr
+				{
+        $$.expr = $1;
+        $$.default_expr = Make_NIL();
+        $$.ok = ($1 != NULL);
+        }
+		| LCURL expr1 EQUAL expr RCURL
+	    {
+//REVIEW: copied below
+		    $$.expr = $2;
+            $$.ok = ($2 != NULL && $4 != NULL);
+            if( $2 != NULL && $4 != NULL ) {
+                $$.default_expr = $4; //TODO: compile later
+		    } else {
+                $$.default_expr = Make_NIL();
+		    }
+
+        }
+
+		| LCURL expr1 TYPE_SEP simple_type EQUAL expr RCURL
+		{
+        //TODO: this here is the first step
+        //Now we need to think about how to add an data structure to
+        //annotate back
+        //Maybe we should use symbol table directly or something?
+		$$.expr = $2;
+        $$.ok = ($2 != NULL && $4.ok && $6 != NULL);
+        if( $2 != NULL && $4.ok && $6 != NULL ) {
+                $$.default_expr = $6;
+			    TypeHint($2,$4.type);
+//TODO: how to do type check here?
+		} else {
+            //TODO: maybe just error out here?
+            $$.default_expr = Make_NIL();
+		}
+		}
 expr1		: LBRACK expr_list RBRACK
                 {
                     $$ = $2;
