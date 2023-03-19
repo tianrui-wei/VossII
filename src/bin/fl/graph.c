@@ -893,6 +893,7 @@ Make_arglist(int cnt)
 					 Make_arglist(cnt-1)) );
 }
 
+//NOTE: what is this?
 g_ptr
 Add_args(int cnt, g_ptr expr)
 {
@@ -1036,6 +1037,7 @@ Print_Result(result_ptr res, odests fp, bool print)
 	} else {
             if( print ) {
                 print_result_local(res->expr,fp,TRUE,FALSE,res->type);
+                // FP(fp, "This is the result\n");
             }
 	}
     } else {
@@ -1249,7 +1251,7 @@ Compile(symbol_tbl_ptr stbl, g_ptr onode, typeExp_ptr type, bool delayed)
 #ifdef CHECK_REF_CNTS
     check_ref_cnts(node);
 #endif
-
+	//TODO: reorder arguments here according to default arguments
     /* Optimize the graph to ease compilaton */
     node = Optimise(node);
 #ifdef CHECK_REF_CNTS
@@ -2643,6 +2645,7 @@ create_free_tbl(g_ptr node)
     return NULL; // Dummy
 }
 
+//NOTE: The perhaps most important function in fl code
 static g_ptr
 abstract_rec(string var, g_ptr node)
 {
@@ -2986,13 +2989,13 @@ traverse_left(g_ptr oroot)
 		    /*       @   P              @     @         */
 		    /*      / \      ==>       / \   / \ 	*/
 		    /*     @   O              M   @ O   |       */
-                    /*    / \                    / \    |       */
-                    /*   @   N                  N   \   |       */
-                    /*  / \                          \  |       */
-                    /* S'  M                          \ |       */
-                    /*                                 \|       */
+            /*    / \                    / \    |       */
+            /*   @   N                  N   \   |       */
+            /*  / \                          \  |       */
+            /* S'  M                          \ |       */
+            /*                                 \|       */
 		    /*                                  P       */
-		    /*						*/
+		    /*						                    */
 		    if( depth < 4 )
 			goto clean_up;
 		    arg1  = GET_APPLY_RIGHT(*sp);
@@ -5042,12 +5045,12 @@ print_result_local(g_ptr node, odests fp, bool pr_brack, bool pr_comma,
 	}
 	return( TRUE );
     }
-    if( !Is_Printable_Type(type) ) {
-	if( pr_comma )
-	    FP(fp, ",");
-	FP(fp, "-");
-	return( FALSE );
-    }
+//    if( !Is_Printable_Type(type) ) {
+//	if( pr_comma )
+//	    FP(fp, ",");
+//	FP(fp, "-");
+//	return( FALSE );
+//    }
     switch( GET_TYPE(node) ) {
 	case CONS_ND:
 	    h = GET_CONS_HD(node);

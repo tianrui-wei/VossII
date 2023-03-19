@@ -4,6 +4,8 @@
 //-------------------------------------------------------------------
 
 #include "compile.h"
+#include "symbol.h"
+#include "fl.h"
 #include "graph.h"
 #include "prefs_ext.h"
 /************************************************************************/
@@ -28,6 +30,7 @@ static g_ptr		lift_lets_and_letrecs(g_ptr node);
 static g_ptr		substitute(string old, g_ptr new_var, g_ptr node);
 static int		is_let_or_letrec(g_ptr node, string *namep,
 					 g_ptr *exprp, g_ptr *inexprp);
+
 /************************************************************************/
 /*			Public Functions				*/
 /************************************************************************/
@@ -43,6 +46,11 @@ Optimise(g_ptr node)
 {
     Check_Ref_Cnts(node);
 
+	if (GET_TYPE(node) == APPLY_ND)
+		node = reorder(node);
+
+    Check_Ref_Cnts(node);
+
     uniq_name_cnt = 0;
     node = mk_uniq_names(node);
 
@@ -52,10 +60,60 @@ Optimise(g_ptr node)
 
     Check_Ref_Cnts(node);
 
+
     node = lift_lets_and_letrecs(node);
     Check_Ref_Cnts(node);
 
     return(node);
+}
+
+g_ptr
+reorder(g_ptr node)
+{
+	g_ptr lhs, rhs;
+	fn_ptr fn;
+	int num_arg;
+	g_ptr root_new;
+
+	// a tree where
+	// LHS: a nested list of lambda expressions
+	// RHS: a nested list of arguments
+	// f x y = x + y + 1
+	//    @
+	//   / \
+	//  @   y
+	// / \
+    // f x
+    //
+    // we do a depth first stepping, and re-order the arguments accordingly
+    // NOTE: for now, we only lift the combinator, so that it will fill arguments that have not been filled
+	num_arg = 1;
+	lhs = GET_APPLY_LEFT(node);
+	rhs = GET_APPLY_RIGHT(node);
+	while (!IS_USERDEF(lhs)) {
+		ASSERT(IS_APPLY(lhs)); // should be apply nodes
+		ASSERT(IS_LEAF(rhs));
+		num_arg += 1;
+		lhs = GET_APPLY_LEFT(lhs);
+		rhs = GET_APPLY_RIGHT(rhs);
+	}
+	fn = GET_USERDEF(lhs); // the actual function pointer
+	arg_names_ptr ap;
+	ap = fn->arg_names;
+	int arg_cnt;
+	for (arg_cnt = 0; arg_cnt < num_arg; arg_cnt++) {
+		if (ap->next == NULL) break;
+		ap = ap->next;
+	}
+	while (ap != NULL) {
+		root_new = Make_APPL_ND(node, ap->defval);
+		INC_REFCNT(root_new);
+		//Eval(root_new);
+		ap = ap->next;
+		node = root_new;
+	}
+	// only apply for a direct case
+	return node;
 }
 
 

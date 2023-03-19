@@ -10,7 +10,8 @@ PLUGIN_DIR ?=$(ROOT_DIR)/plugins
 BASE_FLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
 	-Wall -Wextra -Werror \
 	-DVERSION_DATE='"$(VERSION_DATE)"' \
-	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
+	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1 -Wno-error
+
 
 CFLAGS += $(BASE_FLAGS) $(COMPATIBILITY_FLAG)
 CXXFLAGS += $(BASE_FLAGS) -fpermissive -Wno-error
@@ -28,7 +29,7 @@ LIB = ../../lib/fl_lib.a $(MINISAT_DIR)/lib/libminisat.a
 ABI_HEADERS = float.h graph.h plugin.h strings.h typecheck.h ../../include/types.h
 
 OBJ = new_bdd.o error.o arb_prec.o file_ops.o initialize.o symbol_tbl.o \
-	y.tab.o lex.yy.o \
+	language.tab.o lex.yy.o \
 	graph.o fl.o typecheck.o emit.o lp.o cache.o compile.o \
 	expand_cursor.o io.o remote_tcl.o bexpr.o minisat_ifc.o main.o \
 	draw_graph.o debug.o symbol.o strings.o int_ops.o list_ops.o \
@@ -43,11 +44,11 @@ fl: $(OBJ) $(LIB)
 #
 # compilation with includes
 #
-y.tab.o: y.tab.c
-	$(CC) $(INC) -c $<
-
-lex.yy.o: lex.yy.c
-	$(CC) $(INC) -c $<
+# language.tab.o: language.tab.c
+# 	$(CC) $(INC) -c $<
+#
+# lex.yy.o: lex.yy.c
+# 	$(CC) $(INC) -c $<
 
 .c.o:
 	$(CC) $(CFLAGS) $(INC) -c $<
@@ -55,15 +56,15 @@ lex.yy.o: lex.yy.c
 .cc.o:
 	$(CXX) $(CXXFLAGS) $(CXXFLAGS) $(INC) -c $<
 
-y.tab.c: language.y fl.h language.h graph.h prefs_ext.h
-	@$(YACC) -d -v language.y
+language.tab.c: language.y fl.h language.h graph.h prefs_ext.h
+	@$(YACC) -Wall -d -v language.y
 
-lex.yy.c: lexer y.tab.c graph.h fl.h y.tab.c
+lex.yy.c: lexer language.tab.c graph.h fl.h language.tab.c
 	@$(LEX) lexer
 
 clean:
 	-@touch .q
-	-@/bin/rm -f *.o fl y.tab.c y.tab.h y.output lex.yy.c .q
+	-@/bin/rm -f *.o fl language.tab.c language.tab.h y.output lex.yy.c .q
 	-@/bin/rm -f prefs_ext.h prefs.h abi_version.h
 	@make -C scripts clean
 
@@ -75,12 +76,12 @@ clean:
 #
 arb_prec.o:	    arb_prec.h fl.h
 cache.o:	    cache.h graph.h fl.h
-compile.o:	    compile.h graph.h prefs_ext.h fl.h
+compile.o:	    compile.h symbol.h graph.h prefs_ext.h fl.h
 emit.o:		    emit.h fl.h
 error.o:	    error.h fl.h
 expand_cursor.o:    expand_cursor.h fl.h
 file_ops.o:	    file_ops.h fl.h
-fl.o:		    fl.h y.tab.c prefs_ext.h fl.h
+fl.o:		    fl.h language.tab.c prefs_ext.h fl.h
 graph.o:	    graph.h prefs_ext.h typecheck.h fl.h
 initialize.o:	    initialize.h prefs.h fl.h
 io.o:		    io.h graph.h fl.h

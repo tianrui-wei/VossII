@@ -13,7 +13,7 @@ REPO_OWNER := `stat --printf "%u:%g" .`
 #
 # Tools (wih flags)
 #
-YACC   ='bison -y'
+YACC   ='bison'
 LEX    ='flex -l'
 RANLIB = ranlib
 CC     ?= gcc
@@ -62,7 +62,7 @@ VERSION_DATE = `date +'%y/%m/%d'`
 #-----------------------------------------------------------------------------
 # Debugging version or optimized version?
 #-----------------------------------------------------------------------------
-DEBUG_FLAG = '-g -DDEBUG'	# Maybe:  -fstack-protector-all
+DEBUG_FLAG = '-g3 -ggdb3 -O0 -DDEBUG'	# Maybe:  -fstack-protector-all
 #DEBUG_FLAG = '-g'		#
 #OPTIMIZATION_FLAG =  '-O3'	# Maybe: -O4
 
@@ -201,7 +201,7 @@ install_all: fl functor \
 	@-mkdir -p $(LIB_DIR)
 	cp -r vosslib/* $(LIB_DIR)
 	chmod -R a+rX $(LIB_DIR)
-	@cd ../IDVII/src/fl/design; make
+#	@cd ../IDVII/src/fl/design; make
 
 install_visualization: visualization
 	cp external/visualization/schematic_draw_module.so ../IDVII/

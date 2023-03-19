@@ -397,6 +397,10 @@ static char sscanf_help[] = "\n"
 "    x   a hexadecimal number is read\n"
 "    s   a string is read\n"
 ;
+typedef struct {
+    string name;
+    g_ptr defval;
+} _arg_st;
 
 /************************************************************************/
 /*                      Local Functions                                 */
@@ -419,7 +423,7 @@ static bool             built_in(string filename);
 static bool             already_defined(symbol_tbl_ptr stbl, fn_ptr fp);
 static g_ptr            ignore_P_Y(g_ptr node);
 static g_ptr            ignore_P_DEBUG(g_ptr node);
-static bool             get_named_arg(g_ptr node, string *namep, g_ptr *nextp);
+static bool             get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_nodep, g_ptr *next_default_arg_node);
 static g_ptr            ignore_simple_P_PCATCH(g_ptr onode);
 static g_ptr            ignore_P_CACHE(g_ptr onode);
 static g_ptr            ignore_P_STRICT_ARGS(g_ptr onode);
@@ -474,11 +478,14 @@ Init_symbol()
     builtins_len = strlen("builtins.fl");
 }
 
+//TODO: add things here to fix. It must mark all entry points
 void
 Mark_symbols()
 {
     fn_ptr      fp;
     // Make sure all overload versions in_use are marked as in_use
+    // int, g_ptr, bexpr
+    // strings are not garbage collected
     FOR_REC(&fn_rec_mgr, fn_ptr, fp) {
         if( fp->in_use && fp->overload_list != NULL ) {
             for(oll_ptr ol = fp->overload_list; ol != NULL; ol = ol->next) {
@@ -488,10 +495,11 @@ Mark_symbols()
     }
     FOR_REC(&fn_rec_mgr, fn_ptr, fp) {
         if( fp->in_use ) {
-	    Mark(fp->expr);
-	    Mark(fp->expr_init);
-	    Mark(fp->expr_comb);
+            Mark(fp->expr);
+            Mark(fp->expr_init);
+            Mark(fp->expr_comb);
             Mark(fp->super_comb);
+            //Mark(fp->arg_names->defval);
         } else {
             fp->expr = NULL;
             fp->expr_init = NULL;
@@ -1854,13 +1862,15 @@ Symbols_Install_Functions()
 
 }
 
+
 arg_names_ptr
-Get_argument_names(g_ptr onode)
+Get_argument_names(g_ptr onode, g_ptr dnode)
 {
     buffer args;
-    string  *sp;
+    _arg_st  *sp;
     arg_names_ptr res = NULL;
     g_ptr node = onode;
+	g_ptr g_node = dnode;
     if( node == NULL ) { return NULL; }
     node = ignore_P_Y(node);
     if( node == NULL ) { return NULL; }
@@ -1870,6 +1880,7 @@ Get_argument_names(g_ptr onode)
         node = GET_LAMBDA_BODY(node);
     }
     if( arg_cnt == 0 ) {
+        //FIXME: implement this part later for HFl
 	node = ignore_P_DEBUG(node);
 	new_buf(&args, 10, sizeof(string));
 	string arg;
@@ -1891,21 +1902,25 @@ Get_argument_names(g_ptr onode)
     if( node == NULL ) return NULL;
     node = ignore_simple_P_PCATCH(node);
     if( node == NULL ) return NULL;
-    new_buf(&args, 10, sizeof(string));
+    new_buf(&args, 10, sizeof(_arg_st));
     for(int i = 0; i < arg_cnt; i++) {
-        string arg;
+        _arg_st arg;
         g_ptr next;
-        if( !get_named_arg(node, &arg, &next) ) {
+        g_ptr g_node_next;
+        if( !get_named_arg(node, g_node, &arg, &next, &g_node_next) ) {
             free_buf (&args); 
             return NULL;
         }
         push_buf(&args, (pointer) &arg);
         node = next;
+		g_node = g_node_next;
     }
   make_arg_list:
-    FUB_ROF(&args, string, sp) {
+    FUB_ROF(&args, _arg_st, sp) {
         arg_names_ptr t = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
-        t->name = *sp;
+		Mark(sp->defval);
+        t->name = sp->name;
+        t->defval = sp->defval;
         t->next = res;
         res = t;
     }
@@ -2289,14 +2304,26 @@ ignore_P_DEBUG(g_ptr node)
 }
 
 static bool
-get_named_arg(g_ptr node, string *namep, g_ptr *next_nodep)
+get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_nodep, g_ptr *next_default_arg_node)
 {
     if( !IS_APPLY(node) ) return FALSE;
     if( !IS_LEAF_VAR(GET_APPLY_RIGHT(node)) ) return FALSE;
     node = GET_APPLY_LEFT(node);
     if( !IS_LAMBDA(node) ) return FALSE;
+    if (default_arg_node == NULL) {
+        namep->defval = Make_NIL();
+        *next_default_arg_node = NULL;
+    } else {
+     if (IS_CONS(default_arg_node)) {
+        namep->defval = GET_CONS_HD(default_arg_node);
+        *next_default_arg_node = GET_CONS_TL(default_arg_node);
+    } else {
+        namep->defval = Make_NIL();
+        *next_default_arg_node = NULL;
+     }
+    }
     *next_nodep = GET_LAMBDA_BODY(node);
-    *namep = GET_LAMBDA_VAR(node);
+    namep->name = GET_LAMBDA_VAR(node);
     return TRUE;
 }
 

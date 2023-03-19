@@ -5,6 +5,7 @@
 #include "prefs_ext.h"
 
 int Dbg_en = 0;
+int yydebug = 0;
 
 // #define YYMAXDEPTH 10000	/* To make the parser a bit more robust */
 
@@ -170,10 +171,12 @@ extern int dbg_tst_line_cnt;
 
 %}
 
-%pure-parser
+// %pure-parser
+%define api.pure full
 
 %define parse.lac full
 %define parse.error verbose
+%define parse.trace
 
 %start pgm
 
@@ -191,6 +194,7 @@ extern int dbg_tst_line_cnt;
 		int		line;
 		string		var;
 		g_ptr		expr;
+		g_ptr		default_expr;
 		typeExp_ptr	type;
 		int		cnt;
 	    }			    decl_t;
@@ -440,7 +444,7 @@ stmt		: expr
 		{
 		    if( $1.ok ) {
 			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($1.expr);
+			arg_names_ptr ap = Get_argument_names($1.expr, $1.default_expr);
 			res = Compile(symb_tbl, $1.expr, NULL, TRUE);
 			if( res != NULL ) {
 			    symb_tbl = New_fn_def($1.var, res, symb_tbl,
@@ -477,7 +481,7 @@ stmt		: expr
 		{
 		    if( $1.ok ) {
 			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($1.expr);
+			arg_names_ptr ap = Get_argument_names($1.expr, $1.default_expr);
 			res = Compile(symb_tbl, $1.expr, NULL, TRUE); 
 			if( res != NULL ) {
 			    symb_tbl = New_fn_def($1.var, res, symb_tbl,
@@ -491,7 +495,7 @@ stmt		: expr
 		{
 		    if( $1.ok ) {
 			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($1.expr);
+			arg_names_ptr ap = Get_argument_names($1.expr, $1.default_expr);
 			res = Compile(symb_tbl, $1.expr, NULL, TRUE); 
 			if( res != NULL ) {
 			    symb_tbl = New_fn_def($1.var, res, symb_tbl,
@@ -530,7 +534,7 @@ stmt		: expr
 		{
 		    if( $2.ok && $4.ok ) {
 			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($4.expr);
+			arg_names_ptr ap = Get_argument_names($4.expr, $4.default_expr);
 			res = Compile(symb_tbl, $4.expr, $2.type, TRUE) ;
 			if( res != NULL ) {
 			    symb_tbl = New_fn_def($4.var, res, symb_tbl,
@@ -699,6 +703,7 @@ opt_typed_var	: var_or_infix
 		}
 		;
 
+// First rule: when unsure, make it an var or infix
 var_or_infix	: VART { $$ = $1; }
 		| CROSSPROD { $$ = s_crossprod; }
 		| INFIX_VAR_0 { $$ = $1; }
@@ -817,6 +822,7 @@ decl		: LET fn_defs
 			} else {
 			    $$.expr = Add_args($2.cnt,$2.expr);
 			}
+			$$.default_expr  = $2.default_expr;
 			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
 			$$.ok = TRUE;
 		    } else {
@@ -991,6 +997,8 @@ fn_defs		: fn_def CONJ fn_defs
 			    $$.var  = $1.var;
 			    $$.expr = Make_2inp_Primitive(
 					P_PCATCH, $1.expr, $3.expr);
+			    $$.default_expr = Make_2inp_Primitive(
+					P_PCATCH, $1.default_expr, $3.default_expr);
 			    $$.cnt  = $1.cnt;
 			    $$.type = $1.type;
 			    $$.ok = TRUE;
@@ -1012,6 +1020,7 @@ fn_defs		: fn_def CONJ fn_defs
 			} else {
 			    $$.expr = $1.expr;
 			}
+			$$.default_expr = $1.default_expr;
 			$$.cnt  = $1.cnt;
 			$$.type = $1.type;
 			$$.ok = TRUE;
@@ -1023,9 +1032,12 @@ fn_defs		: fn_def CONJ fn_defs
 
 fn_def		: var_or_infix lhs_expr_list
 		{
+            // var: definition of function name
+            // cnt: number of arguments
 		    if( $2.ok ) {
 			$$.var  = $1;
 			$$.expr = $2.expr;
+			$$.default_expr = $2.default_expr;
 			$$.cnt  = $2.cnt;
 			$$.type = NULL;
 			$$.ok = TRUE;
@@ -1039,6 +1051,7 @@ fn_def		: var_or_infix lhs_expr_list
 			$$.ok = TRUE;
 			$$.var  = $2;
 			$$.expr = $6.expr;
+			$$.default_expr = $6.default_expr;
 			$$.type = $4.type;
 			$$.cnt  = $6.cnt;
 		    } else {
@@ -1052,8 +1065,27 @@ lhs_expr_list	: fn_arg_expr lhs_expr_list
 			g_ptr res;
             //TODO: invent new function?
 			res = TrArg($1.expr, $2.expr, FALSE);
+//            result_ptr def_res;
+//            def_res = Compile(symb_tbl, $1.default_expr, NULL, FALSE);
+//                    if( def_res != NULL ) {
+//                        if( Is_Void(def_res->type) ) {
+//                            Print_Result(def_res, stdout_fp, FALSE);
+//                        } else {
+//                            Print_Result(def_res, stdout_fp, TRUE);
+//                            FP(stdout_fp, "\n");
+//                            symb_tbl = New_fn_def(it, def_res, symb_tbl, !file_load,
+//						  cur_file_name, line_nbr,NULL);
+//                        }
+            $$.default_expr = Make_CONS_ND($1.default_expr, $2.default_expr);
+//			Free_result_ptr(def_res);
+//                    }
+
 			if( res != NULL ) {
+                //NOTE: names are destroyed in this process, but
+                //later reconstructed at strict_decl with Get_argument_names
+                //ANSWER: do pattern matching
 			    Sprintf(buf, "_Q_%d", $2.cnt+1);
+                // APPLY_ND: argument and function definition
 			    $$.expr = Make_APPL_ND(res,
 					   Make_VAR_leaf(
 						wastrsave(&strings, buf)));
@@ -1069,6 +1101,7 @@ lhs_expr_list	: fn_arg_expr lhs_expr_list
 		}
 		| EQUAL top_expr
 		{
+            $$.default_expr = Make_NIL();
 		    if( $2 != NULL ) {
 			$$.expr = $2;
 			$$.cnt = 0;
@@ -1079,6 +1112,7 @@ lhs_expr_list	: fn_arg_expr lhs_expr_list
 		}
 		| QUALIFIED_BY LPAR top_expr RPAR EQUAL top_expr
 		{
+            //FIXME: get the default expr
 		    if( $3 != NULL && $6 != NULL ) {
 			$$.expr = Make_3inp_Primitive(
 				     P_COND,$3,$6,Make_0inp_Primitive(P_PFAIL));
@@ -1644,6 +1678,8 @@ expr		: LCURL expr TYPE_SEP simple_type RCURL
 		| expr05
 		{ $$ = $1; }
 		;
+
+// expr05 is where function calls/evaluations happen
 expr05		: expr05 arg_expr %prec DUMMY_LAST
 		{ $$ = Make_APPL_ND($1, $2); }
 		| expr05 PREFIX_VAR_0 arg_expr
@@ -1701,7 +1737,7 @@ fn_arg_expr : arg_expr
         $$.default_expr = Make_NIL();
         $$.ok = ($1 != NULL);
         }
-		| LCURL expr1 EQUAL expr RCURL
+		| LCURL expr1 EQUAL expr2 RCURL
 	    {
 //REVIEW: copied below
 		    $$.expr = $2;
@@ -1714,7 +1750,7 @@ fn_arg_expr : arg_expr
 
         }
 
-		| LCURL expr1 TYPE_SEP simple_type EQUAL expr RCURL
+		| LCURL expr1 TYPE_SEP simple_type EQUAL expr2 RCURL
 		{
         //TODO: this here is the first step
         //Now we need to think about how to add an data structure to
@@ -1727,7 +1763,6 @@ fn_arg_expr : arg_expr
 			    TypeHint($2,$4.type);
 //TODO: how to do type check here?
 		} else {
-            //TODO: maybe just error out here?
             $$.default_expr = Make_NIL();
 		}
 		}

@@ -15,6 +15,7 @@
 
 /* -------- Function prototypes for exported functions -------- */
 g_ptr	Optimise(g_ptr node);
+g_ptr   reorder(g_ptr node);
 
 #else /* EXPORT_FORWARD_DECL */
 /* ----------------------- Main include file ------------------------------- */

@@ -1453,6 +1453,13 @@ List_ops_Install_Functions()
     typeExp_ptr tv1 = GLnew_tVar();
     typeExp_ptr tv2 = GLnew_tVar();
 
+    // name in fl
+    // for every argument, how strict is it. 0 is lazy, 1 is strict, 2 is evaluate it to be a list (different versions
+    // )
+    // non_lazy of function
+    // type
+    // actual c function (must be pure, overwrite the redex)
+    // GL: global. Long lasting types
     Add_ExtAPI_Function("qsort", "11", FALSE,
 			GLmake_arrow(
 			    GLmake_arrow(tv1,GLmake_arrow(tv1,GLmake_int())),

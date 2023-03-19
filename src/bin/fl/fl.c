@@ -4,7 +4,7 @@
 //-------------------------------------------------------------------
 
 #include "fl.h"
-#include "y.tab.h"
+#include "language.tab.h"
 #include <ctype.h>
 #include <limits.h>
 #include "prefs_ext.h"
@@ -465,16 +465,16 @@ fl_main(int argc, char *argv[])
         FP(stdout_fp, "VOSS-LIBRARY-DIRECTORY = %s\n", RCDefault_dir);
         FP(stdout_fp, "Temporary files directory = %s\n", Voss_tmp_dir);
 
-        {
-            string cmd = tprintf("(_load \"%s/preamble.fl\" F) fseq ();",
-				 binary_location);
-            if( perform_fl_command(cmd) ) {
-                /* Successful load */
-            } else {
-                /* Failed load */
-                Eprintf("Failed to load  %s\n", cmd+5);
-            };
-        }
+//        {
+//            string cmd = tprintf("(_load \"%s/preamble.fl\" F) fseq ();",
+//				 binary_location);
+//            if( perform_fl_command(cmd) ) {
+//                /* Successful load */
+//            } else {
+//                /* Failed load */
+//                Eprintf("Failed to load  %s\n", cmd+5);
+//            };
+//        }
 
         if( start_file != NULL ) {
             string cmd = strtemp("((_load ");
@@ -656,7 +656,7 @@ fl_main(int argc, char *argv[])
 	    fclose(fp);
 	    switch( setjmp(toplevel_eval_env) ) {
 		case 0:
-		    Read_from_file(filename, FALSE, FALSE);
+//		    Read_from_file(filename, FALSE, FALSE);
 		    break;
 		case 2:
 		    // Interrupted and "return to top" selected
@@ -666,7 +666,7 @@ fl_main(int argc, char *argv[])
 	    }
 	} else {
 	    Sprintf(buf, "%s/preamble.fl", binary_location);
-	    Read_from_file(buf, FALSE, FALSE);
+	    //Read_from_file(buf, FALSE, FALSE);
 	}
         Set_default_break_handler();
         while(1) {
@@ -710,12 +710,13 @@ Exit(int status)
 	unlink(input_file_for_cmds);
     }
     // Clean up and remove temp files
-    if( (new_temp_dir == NULL) && (Voss_tmp_dir != NULL) ) {
-        Sprintf(buf, "/bin/rm -rf %s", Voss_tmp_dir);
-        int i = system(buf);
-	(void) i;
-    }
-    fprintf(stderr, "\n");
+    // NOTE: suppress removing output directory
+//    if( (new_temp_dir == NULL) && (Voss_tmp_dir != NULL) ) {
+//        Sprintf(buf, "/bin/rm -rf %s", Voss_tmp_dir);
+//        int i = system(buf);
+//		(void) i;
+//    }
+//    fprintf(stderr, "\n");
     if( profiling_active ) { Emit_profile_data(); }
     exit(status);
 }

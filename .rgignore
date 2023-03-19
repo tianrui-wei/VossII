@@ -1,0 +1,6 @@
+*.fl
+*.v
+modes/
+doc/
+src/external/
+ckt_examples/

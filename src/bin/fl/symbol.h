@@ -78,7 +78,7 @@ void		Mark_ext_obj(g_ptr np);
 void		Save_ext_obj(FILE *fp, g_ptr np);
 void		Sweep_ext_objs();
 string		Get_ExtAPI_Object_name(int class);
-arg_names_ptr	Get_argument_names(g_ptr node);
+arg_names_ptr	Get_argument_names(g_ptr node, g_ptr dnode);
 string		Get_userdef_name(g_ptr node);
 
 #else /* EXPORT_FORWARD_DECL */
@@ -89,6 +89,7 @@ string		Get_userdef_name(g_ptr node);
 
 typedef struct arg_names_rec {
     string	    name;
+    g_ptr defval; // default value
     arg_names_ptr   next;
 } arg_names_rec;
 
