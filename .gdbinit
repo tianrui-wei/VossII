@@ -6,6 +6,8 @@ condition 1 print == 1
 b print_result_local
 
 #b reorder
+b compile.c:102
+
 #b Get_argument_names
 
 #b graph.c:4522
