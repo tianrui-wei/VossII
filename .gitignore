@@ -5,9 +5,9 @@
 *.a
 *.dvi
 y.output
-lex.yy.c
-y.tab.h
-y.tab.c
+*.yy.c
+*.tab.h
+*.tab.c
 /src/bin/fl/fl
 /src/bin/blif2exe/blif2exe
 /src/bin/ignore_signals/ignore_signals
