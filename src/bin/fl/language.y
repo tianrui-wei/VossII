@@ -44,6 +44,31 @@ static FILE		*tmp_fp;
 static char             tmp_buf[1024];
 static string		s_str2float;
 static string		s_crossprod;
+/* change order aggressively
+ associate to the right: infix_R
+ strange ones: binder constructs for hfl
+ one binder: binder
+ foo a b c . f
+ a -> lambda a
+ infix: creating syntaxes
+ some binder records these things
+ shallow embedding of data types
+
+ clk: lambda to all clock cycles
+ also record the name and type
+
+ IDV/src/hfl/
+
+ can give different prefixities
+ Good example: is 26 for 1 cycle
+ is: infix, for a different fixities
+ cycle: postfix
+
+ precedence
+
+ if then else; can introduce your own
+ can do ite
+ */
 static string		s_prefix_0;
 static string		s_prefix_1;
 static string		s_infix_0;
@@ -324,11 +349,19 @@ extern int dbg_tst_line_cnt;
 
 %type  <decl_list>	type_decl new_type_decl type_expr type
 %type  <overloads_t>	overload_list
+// NOTE: what's the different types
 %type  <expr_t>		top_expr expr expr05 expr1 expr2 expr_list arg_expr
 %type	<fn_arg_expr_t> fn_arg_expr
+//NOTE: is cl cons list?
 %type  <cl_t>		rev_expr_list
 %type  <decl_t>		decl cache_decl strict_decl fn_defs fn_def lhs_expr_list
 %type  <str_t>		var_or_infix
+/*
+ var or infix is for the following situation
+ supppose you have (a and 2).
+ it could be a(and, 2) or and(a, 2)
+ This relaxes the constraint and leave later to figure this out
+ */
 %type  <type_name_t>	type_name
 %type  <tpLptr_t>	type_list
 %type  <tpLptr_t>	targ_list
@@ -406,14 +439,16 @@ pgm		: pgm SEMICOLON stmt0
 ;
 
 stmt0		: stmt
-		{ Emit_prompt(""); }
+		{ /*Emit_prompt("");*/ }
 		| /* Empty */
 		{ }
 ;
 
+//NOTE: Boils down to here
 stmt		: expr
 		{
                     result_ptr res;
+//TODO: look at the compile here
                     res = Compile(symb_tbl, $1, NULL, FALSE);
                     if( res != NULL ) {
                         if( Is_Void(res->type) ) {
@@ -971,7 +1006,7 @@ strict_decl	: S_LET fn_defs
 		    }
 		}
 		;
-
+// letrec A 0 = 2 /\ A n = A(n-1) + 2
 fn_defs		: fn_def CONJ fn_defs
 		{
 		    if( $1.ok && $3.ok ) {
@@ -1020,7 +1055,8 @@ fn_defs		: fn_def CONJ fn_defs
 		    }
 		}
 		;
-
+//TODO: this is where we need to modify things
+// f A = 2
 fn_def		: var_or_infix lhs_expr_list
 		{
 		    if( $2.ok ) {
@@ -1045,6 +1081,20 @@ fn_def		: var_or_infix lhs_expr_list
 			$$.ok = FALSE;
 		    }
 		}
+//        /*TODO: make the change here for equal and assignment*/
+//		| LCURL var_or_infix TYPE_SEP simple_type EQUAL RCURL lhs_expr_list
+//		{
+//		    if( $4.ok && $6.ok ) {
+//			$$.ok = TRUE;
+//			$$.var  = $2;
+//			$$.expr = $6.expr;
+//			$$.type = $4.type;
+//			$$.cnt  = $6.cnt;
+//		    } else {
+//			$$.ok = FALSE;
+//		    }
+//		}
+
 		;
 lhs_expr_list	: fn_arg_expr lhs_expr_list
 		{
@@ -1402,7 +1452,7 @@ top_expr	: expr
 		    $$ = $1;
 		}
 		;
-
+/* all expressions */
 expr		: LCURL expr TYPE_SEP simple_type RCURL
 		{
 		    if( $4.ok ) {
@@ -1495,6 +1545,7 @@ expr		: LCURL expr TYPE_SEP simple_type RCURL
 		}
 		| SZ_BINDER_WITH_ACC_VAR arg_expr var_list DOT expr
 		{
+// takes a variable list and dot
 		    var_list_ptr vp;
 		    Sprintf(buf, "_sz_bind_cnt_");
 		    string scnt = wastrsave(&strings, buf);
@@ -1644,6 +1695,7 @@ expr		: LCURL expr TYPE_SEP simple_type RCURL
 		| expr05
 		{ $$ = $1; }
 		;
+// expr1 or expr1 + arg_expr
 expr05		: expr05 arg_expr %prec DUMMY_LAST
 		{ $$ = Make_APPL_ND($1, $2); }
 		| expr05 PREFIX_VAR_0 arg_expr
@@ -1680,6 +1732,7 @@ expr05		: expr05 arg_expr %prec DUMMY_LAST
 		}
 		;
 
+/* Any of expr 1, {expr1 : type}, {expr1: type = 2} */
 arg_expr	: expr1
 		{
 		    $$ = $1;
@@ -1693,6 +1746,7 @@ arg_expr	: expr1
 			$$ = $2;
 		    }
 		}
+
 		;
 
 fn_arg_expr : arg_expr
@@ -1731,6 +1785,13 @@ fn_arg_expr : arg_expr
             $$.default_expr = Make_NIL();
 		}
 		}
+
+// [list of expr]
+// []
+// ()
+// (expr)
+// "a"
+// a
 expr1		: LBRACK expr_list RBRACK
                 {
                     $$ = $2;
@@ -1764,7 +1825,7 @@ expr_list	: rev_expr_list
 		    $$ = Convert_CL($1, TRUE);
 		}
 		;
-
+// NOTE: reversed expression list
 rev_expr_list	: rev_expr_list COMMA expr %prec DUMMY_CONS
 		{
 		    $$ = Get_CL_node();
@@ -1782,6 +1843,7 @@ rev_expr_list	: rev_expr_list COMMA expr %prec DUMMY_CONS
 		}
 		;
 
+/* all the leaf values and special functions */
 expr2		: VART
 		{
 		    $$ = Make_VAR_leaf($1);

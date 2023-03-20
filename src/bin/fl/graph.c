@@ -1248,12 +1248,14 @@ Compile(symbol_tbl_ptr stbl, g_ptr onode, typeExp_ptr type, bool delayed)
     check_ref_cnts(node);
 #endif
 
+    // TODO: why is this here? i.e. why is let only lifted here?
     /* Optimize the graph to ease compilaton */
     node = Optimise(node);
 #ifdef CHECK_REF_CNTS
     check_ref_cnts(node);
 #endif
     new_mgr(&free_rec_mgr, sizeof(free_list_rec));
+    //TODO: is the kill happening here?
     if( is_large(node) < LARGE_CUT_OFF ) {
 	create_hash(&free_tbl, 100, ptr_hash, ptr_equ);
 	create_free_tbl(node);
@@ -5098,6 +5100,12 @@ print_result_local(g_ptr node, odests fp, bool pr_brack, bool pr_comma,
     return( r );
 }
 
+//REVIEW: what does this do?
+//ANSWER: combinator compilation. Move the arguments to the right places to the graph
+//lambda expressions gets compiled into combinators
+//
+//SPJ books
+//SK combinators
 static g_ptr
 compile_rec(g_ptr node)
 {
@@ -5326,6 +5334,7 @@ gmap2_equ(pointer p1, pointer p2)
 }
 
 static g_ptr
+//REVIEW: what is this
 trarg(g_ptr node, g_ptr E, bool constructor)
 {
     string new;

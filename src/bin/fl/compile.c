@@ -5,6 +5,7 @@
 
 #include "compile.h"
 #include "graph.h"
+#include "symbol.h"
 #include "prefs_ext.h"
 /************************************************************************/
 /*			Global Variables				*/
@@ -84,7 +85,7 @@ mk_uniq_names(g_ptr node)
         case LAMBDA_ND:
 	    Sprintf(buf, "_ZZ'%d", uniq_name_cnt++);
 	    var2 = wastrsave(&strings, buf);
-	    var = GET_LAMBDA_VAR(node);
+	    var = GET_LAMBDA_VAR(node)->name;
 	    line = GET_LAMBDA_LINE_NBR(node);
 	    /* Name capture so rename lambda variable */
 	    res = Make_Lambda(var2, substitute(var, Make_VAR_leaf(var2),
@@ -125,7 +126,7 @@ remove_aliases(g_ptr node)
 	    MoveTypeHint(node, res, FALSE);
 	    return res;
         case LAMBDA_ND:
-	    var = GET_LAMBDA_VAR(node);
+	    var = GET_LAMBDA_VAR(node)->name;
 	    line = GET_LAMBDA_LINE_NBR(node);
             res = Make_Lambda(GET_LAMBDA_VAR(node),
 			      remove_aliases(GET_LAMBDA_BODY(node)));
@@ -143,6 +144,7 @@ remove_aliases(g_ptr node)
 }
 
 
+// TODO: modify me
 static g_ptr
 lift_lets_and_letrecs(g_ptr node)
 {
@@ -258,6 +260,7 @@ substitute(string old, g_ptr new_var, g_ptr node)
     }
 }
 
+// TODO: modify me
 static int
 is_let_or_letrec(g_ptr node, string *namep, g_ptr *exprp, g_ptr *inexprp)
 {

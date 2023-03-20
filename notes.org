@@ -1,0 +1,147 @@
+#+title: VossII implementation notes
+* Types of nodes
+Different types of nodes in the graph
+** APPLY
+APPLY(Lambda, Expr): function and argument
+Apply the function on the expression
+** LEAF
+terminal nodes in the graph
+** LAMBDA
+define a lambda calculus lambda x, y, z = expr;
+formally, the expression is \x.expression
+var: the variables to subsitute
+expr: actual definition of function
+* Eval and Compile
+Normally nothing's compiled, unless we force it
+* Final results
+** force
+force is where lazy values are forced into non-lazy ones
+** Print_Result
+print result if it's valuable
+* nlet
+named invocation: complex case
+unnamed: much simpler
+* constructor
+need to walk the tree before looking at the constructor
+reflect: pattern matching as first citizen
+* f
+Every thing will be compiled into lambda expression
+
+let foo = 12+3 in (foo*99) -> (\foo. (foo * 99)) (12 + 3) <-> APPLY(Lambda)
+
+let inc x = x + 1 in (inc 3 - inc 2 ) -> (let inc = \x. x+1) in (inc3 - inc2) -> (\inc. (inc3 - inc2) inc + 1)
+
+let inc (BR l r) = foo in e -> let inc = \(BR l r). foo in e ---> (pattern matching now) ---> let inc = \_Q_1. (... IF _Q_1 is a BR constructor THEN bind arg1,2 to variable L and R via lambda expression)
+
+P_CATCH/P_FAIL: pattern matching failure
+
+if _Q_1 fails, go to _Q_2
+* laziness
+pattern matching: look at the first, evaluate it, try pattern matching
+* P_
+P_PFAIL: pattern matching failure
+P_PCATCH: catch and move on
+P_CATCH, P_FAIL: ultimate
+* ext_obj
+avoid work in typechecker, front end
+use EXT_API generated functiosn
+* fseq, seq
+force === fseq
+* expand or format to format the source files
+all tabs are 8 spaces
+* naming
+global: start with capital
+* symbol table
+a linked list: true all visible things
+a hash table: fast find functions
+Find_Function_Def
+Find_Function: find info left by typechecker
+
+
+* default
+find all functions
+if it's named, then re-arrange according the arguments
+not worth
+
+compiled to FL
+
+* fl.h
+
+#ifdef 0
+do things like don't free nodes, don't do ref counting.
+
+* record manager/buffers
+
+free them eventually
+* fasd
+
+PINST: hierarchy
+PPHASE: phase delay
+
+W_PHASE_DELAY
+UPDATE_FN: at clock edges/latch
+
+* simulate
+convert to FSM for simulation
+
+vosys: compile to pexlif
+
+P_INST: Hier, or LEAF
+
+preable.fl:1918
+
+attrs: filename and line number
+leaf: quick way to see if it's a leaf
+
+formal input/output/internals: formal name
+internals: signals that are used for connection
+
+pHIER: list of children or a leaf
+
+P_LEAF: comb or phase delay
+
+lettype update_fn
+
+let bexpr2bdd_pair  (a,b) =
+
+bitblasting happens at runtime
+
+fsm model: ?
+
+* signatures
+sha256: for look up
+approximate name: fuction matchings
+
+vossii preferences verbosity
+composite -1: input
+composite 0, 1: the lower cm=ompositiversd o==down below
+composite 1:
+
+op_add: carry chain: what was blasted apart
+op_mode
+
+pexlif2wfsm: word fsm
+pair level: (god, value) (valid, value), partial valid? Not worth the bitmask
+(valid, god, value)
+
+overconstrained: tautalogy
+
+made wrong assumptions
+
+2 wires that are mutex
+
+put 2 variables a, b
+
+ weaken the circuit: compute the less information
+
+ STE: a string, (weakening list = stopat list)
+
+ GSTE: empty set: respresented as top
+
+ top used as empty set, 2 values to
+
+ failed: bottom and value,
+
+ should have a full lattice
+
+ bottom, value, top

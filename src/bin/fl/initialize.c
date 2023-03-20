@@ -24,7 +24,7 @@ extern string	default_vosslib_dir;
 /************************************************************************/
 /*			GLOBAL FUNCTIONS				*/
 /************************************************************************/
-
+//NOTE: this is the place where things are setup
 VOID
 Init()
 {

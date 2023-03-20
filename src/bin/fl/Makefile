@@ -30,7 +30,7 @@ ABI_HEADERS = float.h graph.h plugin.h strings.h typecheck.h ../../include/types
 OBJ = new_bdd.o error.o arb_prec.o file_ops.o initialize.o symbol_tbl.o \
 	y.tab.o lex.yy.o \
 	graph.o fl.o typecheck.o emit.o lp.o cache.o compile.o \
-	expand_cursor.o io.o remote_tcl.o bexpr.o minisat_ifc.o main.o \
+	expand_cursor.o io.o remote_tcl.o bexpr.o wexpr.o minisat_ifc.o main.o \
 	draw_graph.o debug.o symbol.o strings.o int_ops.o list_ops.o \
 	system.o float.o bv.o bev.o fsm.o sha256.o table.o image.o \
 	plugin.o plugin_loader.o plugin_checker.o plugin_errlog.o \
@@ -91,6 +91,7 @@ remote_tcl.o:	    remote_tcl.h graph.h typecheck.h fl.h
 symbol_tbl.o:	    symbol_tbl.h fl.h
 typecheck.o:	    typecheck.h graph.h fl.h
 bexpr.o:	    bexpr.h graph.h fl.h
+wexpr.o:	    wexpr.h graph.h fl.h
 draw_graph.o:	    draw_graph.h graph.h fl.h
 debug.o:	    debug.h graph.h io.h fl.h
 symbol.o:	    symbol.h graph.h typecheck.h fl.h

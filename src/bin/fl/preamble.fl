@@ -1760,6 +1760,64 @@ lettype mem = MEM
 
 let DBGmem (MEM asz lines dsz) = sprintf "(MEM %d %d %d)" asz lines dsz;
 
+// word level expressions. Simulation engine used internally
+// like bgetmodel interface
+//
+//Primitives in c
+//fl data type, but c functions to traverse
+//
+//eg: mk_W_AND, is_binary_wexpr (pexlif.c and fsm.c)
+//
+// Define a word level STE engine
+//
+//Simulation engine: looks for these expressions and evaluate them at a bit level
+//
+//now: word level, but interpretes them
+//
+//
+//simulation engine: STE engine
+//
+//old forte: everything bit blasted already
+//
+//There was an implementation, but it was only so-so
+//
+//word level STE: (god-value) representation
+//
+// (value, valid) as primitives.
+//
+//Result was not as good
+//
+//backend: pexlif
+//
+//map process into hardware: flip flops
+//
+//pexlif: word level
+//
+//STM solver: function you need to create: wget_model
+//
+//a list of word level of parameters
+//
+//walk over the wexpr
+//
+//fsm.c
+//
+//do a first
+//
+//problem: doesn't so well. Hardware generates different types of formulas
+//
+//forte: 5 different bdd packages: need special tailoring. Cannot swap engines in.
+//
+//Some of it does not deallocate memory
+//
+//Effectively: allocate, run garbage collection, put it on free list
+//
+//valgrind: also confused about we play games with pointers
+//
+//nodes: double word aligned. mark bits and garbage counting
+//
+//strings are not garbage collected
+//
+//why bother
 lettype wexpr =
             W_X {sz::int}
         |   W_CONST {sz::int} {v::int}

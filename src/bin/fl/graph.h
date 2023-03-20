@@ -175,6 +175,7 @@ typedef struct g_rec {
 #define RESET_G_PTR(np)		{ (np)->L = 0; (np)->R = 0; }
 #endif
 /* Types of nodes */
+//NOTE: here are the type of nodes in the AST
 #define LAMBDA_ND               0
 #define APPLY_ND                1
 #define CONS_ND                 2

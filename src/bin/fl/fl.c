@@ -15,7 +15,6 @@
 #include <sys/resource.h>
 #include <signal.h>
 #include <poll.h>
-
 #define FL_VERSION "1.0"
 
 /* ======================== Global variables ======================== */
@@ -699,6 +698,7 @@ Set_default_break_handler()
     signal(SIGINT, break_handler);
 }
 
+//TODO: modify the free functions here
 void
 Exit(int status)
 {

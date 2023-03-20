@@ -12,7 +12,7 @@
 #include "new_bdd.h"
 #include "prefs_ext.h"
 #include "graph.h"
-
+//NOTE: all the heavy lifting happens here, where things get called and proven
 /* ------------- Global variables ------------- */
 
 /********* Global variables referenced ***********/
@@ -695,6 +695,7 @@ bdepends(g_ptr redex)
     DEC_REF_CNT(r);
 }
 
+/* The function that invokes the bdd solver */
 static void
 bget_model(g_ptr redex)
 {
