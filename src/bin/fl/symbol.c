@@ -1915,17 +1915,23 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
         node = next;
 		g_node = g_node_next;
     }
-  make_arg_list:
+  make_arg_list: {
+	//REVIEW: this looks weird
+    arg_names_ptr arg_root = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
+    arg_names_ptr arg_iter = arg_root;
     FUB_ROF(&args, _arg_st, sp) {
         arg_names_ptr t = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
+		arg_iter->next = t;
 		Mark(sp->defval);
+		SET_REFCNT(sp->defval, MAX_REF_CNT);
         t->name = sp->name;
         t->defval = sp->defval;
-        t->next = res;
-        res = t;
+        t->next = NULL;
+        arg_iter = t;
     }
     free_buf (&args); 
     return res;
+	}
 }
 
 

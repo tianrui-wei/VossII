@@ -88,18 +88,21 @@ reorder(g_ptr node)
     // we do a depth first stepping, and re-order the arguments accordingly
     // NOTE: for now, we only lift the combinator, so that it will fill arguments that have not been filled
 	num_arg = 1;
+
 	lhs = GET_APPLY_LEFT(node);
 	rhs = GET_APPLY_RIGHT(node);
-	while (!IS_USERDEF(lhs)) {
-		ASSERT(IS_APPLY(lhs)); // should be apply nodes
+	while (IS_APPLY(lhs)) {
+		if (IS_PRIM_FN(rhs)) goto reorder_finish;
 		ASSERT(IS_LEAF(rhs));
 		num_arg += 1;
+		rhs = GET_APPLY_RIGHT(lhs);
 		lhs = GET_APPLY_LEFT(lhs);
-		rhs = GET_APPLY_RIGHT(rhs);
 	}
+	if (!IS_USERDEF(lhs)) goto reorder_finish;
 	fn = GET_USERDEF(lhs); // the actual function pointer
 	arg_names_ptr ap;
 	ap = fn->arg_names;
+	if (ap == NULL) goto reorder_finish;
 	int arg_cnt;
 	for (arg_cnt = 0; arg_cnt < num_arg; arg_cnt++) {
 		if (ap->next == NULL) break;
@@ -107,11 +110,13 @@ reorder(g_ptr node)
 	}
 	while (ap != NULL) {
 		root_new = Make_APPL_ND(node, ap->defval);
-		INC_REFCNT(root_new);
+		SET_REFCNT(root_new, MAX_REF_CNT);
 		//Eval(root_new);
 		ap = ap->next;
 		node = root_new;
 	}
+	SET_REFCNT(node, MAX_REF_CNT);
+reorder_finish:
 	// only apply for a direct case
 	return node;
 }

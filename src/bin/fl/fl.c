@@ -656,7 +656,7 @@ fl_main(int argc, char *argv[])
 	    fclose(fp);
 	    switch( setjmp(toplevel_eval_env) ) {
 		case 0:
-//		    Read_from_file(filename, FALSE, FALSE);
+		    Read_from_file(filename, FALSE, FALSE);
 		    break;
 		case 2:
 		    // Interrupted and "return to top" selected
@@ -666,7 +666,7 @@ fl_main(int argc, char *argv[])
 	    }
 	} else {
 	    Sprintf(buf, "%s/preamble.fl", binary_location);
-	    //Read_from_file(buf, FALSE, FALSE);
+	    Read_from_file(buf, FALSE, FALSE);
 	}
         Set_default_break_handler();
         while(1) {

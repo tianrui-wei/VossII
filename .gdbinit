@@ -5,11 +5,13 @@ condition 1 print == 1
 
 b print_result_local
 
-b reorder
+#b reorder
 #b Get_argument_names
 
-start
-c
+#b graph.c:4522
+
+#start
+#c
 
 # set args 2>fl.log
 #set follow-fork-mode child
