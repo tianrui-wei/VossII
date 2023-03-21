@@ -1,4 +1,6 @@
 %{
+//TODO: add grammar for named evaluation
+//NO lambda in evaluation -> seeing lambda means gc
 #include "fl.h"
 #include "language.h"
 #include "graph.h"

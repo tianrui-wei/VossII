@@ -1895,6 +1895,7 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
 	}
 	goto make_arg_list;
     }
+	// clean up the argument expressions
     if( node == NULL ) return NULL;
     node = ignore_P_CACHE(node);
     node = ignore_P_STRICT_ARGS(node);
@@ -1917,16 +1918,14 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
     }
   make_arg_list:
 	//REVIEW: this looks weird
-    arg_names_ptr last_t = NULL;
     FUB_ROF(&args, _arg_st, sp) {
         arg_names_ptr t = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
-		if (res == NULL) res = t;
-		if (last_t != NULL) last_t->next = t;
-		Mark(sp->defval);
 		SET_REFCNT(sp->defval, MAX_REF_CNT);
         t->name = sp->name;
         t->defval = sp->defval;
-        t->next = NULL;
+        t->next = res;
+		Mark(t->defval);
+		res = t;
 	}
     free_buf (&args);
     return res;
@@ -2319,13 +2318,23 @@ get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_no
         *next_default_arg_node = NULL;
     } else {
      if (IS_CONS(default_arg_node)) {
-        namep->defval = GET_CONS_HD(default_arg_node);
+		if (!IS_NIL(GET_CONS_HD(default_arg_node))) {
+			//TODO: this is very ugly and probably not needed
+			namep->defval =GET_CONS_HD(default_arg_node);
+			Mark(default_arg_node);
+			GC_Protect(default_arg_node);
+		}
+		else {
+			namep->defval = Make_NIL();
+		}
         *next_default_arg_node = GET_CONS_TL(default_arg_node);
     } else {
         namep->defval = Make_NIL();
         *next_default_arg_node = NULL;
      }
     }
+	Mark(namep->defval);
+	GC_Protect(namep->defval);
     *next_nodep = GET_LAMBDA_BODY(node);
     namep->name = GET_LAMBDA_VAR(node);
     return TRUE;

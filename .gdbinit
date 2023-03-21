@@ -1,12 +1,19 @@
 layout src
 
-b Print_Result
-condition 1 print == 1
+#b Print_Result
+#condition 1 print == 1
+#
+#b print_result_local
+#
 
-b print_result_local
+# GRl(node, level)
+# DPR
+# DPL
 
+#b Rand_Var
+b abort
 #b reorder
-b compile.c:102
+b compile.c:123
 
 #b Get_argument_names
 
@@ -29,3 +36,6 @@ b compile.c:102
 #b Compile
 #b Install_BuiltIns
 # b Get_CL_node
+
+
+layout src

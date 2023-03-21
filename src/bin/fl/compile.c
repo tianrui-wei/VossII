@@ -68,8 +68,9 @@ Optimise(g_ptr node)
 }
 
 g_ptr
-reorder(g_ptr node)
+reorder(g_ptr onode)
 {
+	g_ptr node = onode;
 	g_ptr lhs, rhs;
 	fn_ptr fn;
 	int num_arg;
@@ -89,19 +90,29 @@ reorder(g_ptr node)
     // NOTE: for now, we only lift the combinator, so that it will fill arguments that have not been filled
 	num_arg = 1;
 
+//	while(IS_APPLY(node)) {
+//		node = GET_APPLY_LEFT(node);
+//		num_arg++;
+//	}
+//	if (IS_PRIM_FN(node)) goto reorder_finish;
+
 	lhs = GET_APPLY_LEFT(node);
 	rhs = GET_APPLY_RIGHT(node);
 	while (IS_APPLY(lhs)) {
+//		if (IS_PRIM_FN(lhs)) goto reorder_finish;
+//		// the following may not be true due to partially evaluated fucntions
+		// ASSERT(IS_LEAF(rhs));
 		if (IS_PRIM_FN(rhs)) goto reorder_finish;
-		ASSERT(IS_LEAF(rhs));
 		num_arg += 1;
 		rhs = GET_APPLY_RIGHT(lhs);
 		lhs = GET_APPLY_LEFT(lhs);
 	}
 	if (!IS_USERDEF(lhs)) goto reorder_finish;
 	fn = GET_USERDEF(lhs); // the actual function pointer
+	ASSERT(fn != NULL);
 	arg_names_ptr ap;
 	ap = fn->arg_names;
+	if (IS_PRIM_FN(fn->expr)) goto reorder_finish;
 	if (ap == NULL) goto reorder_finish;
 	int arg_cnt;
 	for (arg_cnt = 0; arg_cnt < num_arg; arg_cnt++) {
@@ -109,13 +120,22 @@ reorder(g_ptr node)
 		ap = ap->next;
 	}
 	while (ap != NULL) {
-		root_new = Make_APPL_ND(node, ap->defval);
-		SET_REFCNT(root_new, MAX_REF_CNT);
+		if (!IS_NIL(ap->defval)) {
+			root_new = Make_APPL_ND(node, ap->defval);
+			node = root_new;
+		}
+		//NOTE: not doing evaluation
+		//SET_REFCNT(root_new, MAX_REF_CNT);
 		//Eval(root_new);
 		ap = ap->next;
-		node = root_new;
+		arg_cnt++;
 	}
-	SET_REFCNT(node, MAX_REF_CNT);
+	//NOTE: not doing evaluation
+	//SET_REFCNT(node, MAX_REF_CNT);
+//	if (node != onode) {
+//		GRl(onode, 10);
+//		GRl(node, 10);
+//	}
 reorder_finish:
 	// only apply for a direct case
 	return node;

@@ -999,7 +999,7 @@ non_lazy get_cur_eval_cond;
 
 // Sort a list of elements using the cmp_fun comparison function.
 // cmp_fun takes two elements from the list and should return:
-//    >0 if the first element is to be viewed as larger than the second
+//    >0 if the first element is to be viewed as larger than the se	cond
 //    <0 if the first element is to be viewed as smaller than the second
 //     0 if the the two elements are to be viewed as same
 // For elements that are viewed as the same, their final order is undefined.
