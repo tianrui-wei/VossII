@@ -12,7 +12,8 @@
 
 #ifndef _BUF_H
 #define _BUF_H
-#include <strings.h>
+//#include <strings.h>
+#include <string.h>
 #include "types.h"
 #include "alloc.h"
 

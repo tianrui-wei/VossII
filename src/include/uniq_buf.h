@@ -12,7 +12,7 @@
 
 #ifndef _UNIQ_BUF_H
 #define _UNIQ_BUF_H
-#include <strings.h>
+// #include <strings.h>
 #include "buf.h"
 #include "hash.h"
 

@@ -63,7 +63,7 @@
 
 /* All the standard include files that are used in fl */
 #include <stdio.h>
-#include <strings.h>
+// #include <strings.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>

@@ -16,8 +16,8 @@ REPO_OWNER := `stat --printf "%u:%g" .`
 YACC   ='bison'
 LEX    ='flex -l'
 RANLIB = ranlib
-CC     ?= gcc
-CX     ?= g++
+CC     ?= gcc-12
+CX     ?= g++-12
 # CC     = clang
 # CX     = clang++
 
@@ -52,7 +52,9 @@ FL_OPTIONS = '-D__STDC_LIMIT_MACROS -D __STDC_FORMAT_MACROS'
 COMPATIBILITY_FLAG = '-std=gnu99'
 
 
-TCL_INCLUDE = '-I/usr/include/tcl8.6/'
+TCL_INCLUDE := '-I/usr/include/tcl8.6/ -I /opt/X11/include -L /opt/X11/lib/'
+#TCL_INCLUDE += $(shell pkg-config --libs tk)
+#TCL_INCLUDE += 
 
 #
 # Version control
@@ -62,7 +64,8 @@ VERSION_DATE = `date +'%y/%m/%d'`
 #-----------------------------------------------------------------------------
 # Debugging version or optimized version?
 #-----------------------------------------------------------------------------
-DEBUG_FLAG = '-g3 -ggdb3 -O0 -DDEBUG'	# Maybe:  -fstack-protector-all
+DEBUG_FLAG := '-I/usr/X11R6/include -L/usr/X11R6/lib -g3 -ggdb3 -O0 -DDEBUG -I /opt/X11/include -L /opt/X11/lib/ '	# Maybe:  -fstack-protector-all
+#DEBUG_FLAG += $(shell pkg-config --libs tk)
 #DEBUG_FLAG = '-g'		#
 #OPTIMIZATION_FLAG =  '-O3'	# Maybe: -O4
 
@@ -219,7 +222,9 @@ minisat:
 	make -C "$(MINISAT_DIR)" install
 
 visualization:
-	make -C "$(VISUALIZATION_DIR)" TCL_INCLUDE=$(TCL_INCLUDE) CC=$(CC) CXX=$(CX)
+	echo $(TCL_INCLUDE)
+	echo $(DEBUG_FLAG)
+	@-make -C "$(VISUALIZATION_DIR)" TCL_INCLUDE=$(TCL_INCLUDE) CFLAGS=$(DEBUG_FLAG) CC=$(CC) CXX=$(CX)
 
 $(YOSYS_WRITE_PEXLIF)/write_pexlif.so: $(YOSYS_WRITE_PEXLIF)/write_pexlif.cc
 	make -C $(YOSYS_WRITE_PEXLIF)

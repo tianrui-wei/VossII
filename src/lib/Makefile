@@ -3,7 +3,8 @@
 # in the subdirectory.
 #
 CFLAGS += $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(COMPATIBILITY_FLAG) \
-	 -Wall -Wextra -Werror
+	 -Wall -Wextra 
+# -Werror
 
 #
 #

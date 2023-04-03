@@ -12,7 +12,7 @@
 
 #ifndef _GENERATION_HASH_H
 #define _GENERATION_HASH_H
-#include <strings.h>
+//#include <strings.h>
 #include "buf.h"
 #include "hash.h"
 

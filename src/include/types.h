@@ -15,6 +15,7 @@
 #define _TYPES_H
 #include <stdio.h>
 #include <stdlib.h>
+//#include <stdbool.h>
 
 typedef char		    *string;
 typedef unsigned int	    machine_word;
@@ -23,7 +24,10 @@ typedef unsigned long int   lunint;
 typedef unsigned int	    *mword_ptr;
 typedef void	            *pointer;
 typedef unsigned char       *bpointer;
-typedef int		    bool;
+#ifdef bool
+#undef bool
+#endif
+typedef int					bool;
 typedef unsigned char	    flag;
 typedef unsigned char	    uchar;
 

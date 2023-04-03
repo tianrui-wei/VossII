@@ -20,6 +20,7 @@
 #ifndef MEMOIZE_H
 #define MEMOIZE_H
 #include "fl.h"	/* Global data types and include files 		     */
+#include "graph.h"	/* Global data types and include files 		     */
 
 #endif /* MEMOIZE_H */
 #endif /* EXPORT_FORWARD_DECL */

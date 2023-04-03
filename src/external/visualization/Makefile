@@ -1,7 +1,8 @@
 
 CC = gcc
 # CFLAGS = -O3 -fPIC
-CFLAGS = -g -fPIC $(TCL_INCLUDE)
+CFLAGS := -g -fPIC -I/usr/include/tcl8.6/ -I/opt/X11/include -L/opt/X11/lib/
+CFLAGS += $(shell pkg-config --libs tk)
 
 LIB_FILES = ../../lib/alloc.c \
 	    ../../lib/buf.c \
@@ -24,16 +25,16 @@ schematic_draw_module.so: schematic_draw_module.c list_util.o place_bounds.o \
 
 
 list_util.o: list_util.h list_util.c
-	$(CC) -I ../../include -g -c list_util.c 
+	$(CC) $(CFLAGS) -I ../../include -g -c list_util.c 
 
 place_bounds.o: list_util.h place_bounds.h place_bounds.c
-	$(CC) -I ../../include -g -c place_bounds.c
+	$(CC) $(CFLAGS) -I ../../include -g -c place_bounds.c
 
 place.o: list_util.h place.h place.c
-	$(CC) -I ../../include -g -c place.c
+	$(CC) $(CFLAGS) -I ../../include -g -c place.c
 
 sch_util.o: list_util.h sch_util.h sch_util.c
-	$(CC) -I ../../include -g -c sch_util.c 
+	$(CC) $(CFLAGS) -I ../../include -g -c sch_util.c 
 
 clean:
 	/bin/rm -f *.o *.so
