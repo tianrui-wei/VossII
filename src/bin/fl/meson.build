@@ -67,5 +67,5 @@ fl_lib = executable('fl', fl_source,
     link_with: vossii_lib,
     include_directories: [fl_inc, loc_inc],
     override_options : ['c_std=gnu99'],
-    c_args: ['-D__STDC_LIMIT_MACROS', '-D__STDC_FORMAT_MACROS', '-Wno-error', '-DDEBUG', '-DFL_BINARY=1', '-DVERSION_DATE=0000']
+    c_args: ['-D__STDC_LIMIT_MACROS', '-D__STDC_FORMAT_MACROS', '-DDEBUG', '-DVERSION_DATE=0000']
     )
