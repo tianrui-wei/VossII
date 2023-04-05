@@ -197,11 +197,18 @@ fl_main(int argc, char *argv[])
     bool	unbuf_stdout = FALSE;
 
     // Unlimit stacksize
-    struct rlimit rlim = {RLIM_INFINITY, RLIM_INFINITY};
+//    struct rlimit rlim = {RLIM_INFINITY, RLIM_INFINITY};
+#ifndef __APPLE__
+    struct rlimit rlim;
+	getrlimit(RLIMIT_STACK, &rlim);
+	if (rlim.rlim_cur < RLIM_INFINITY) {
+		rlim.rlim_max = RLIM_INFINITY;
+	}
     if( setrlimit(RLIMIT_STACK, &rlim) == -1 ) {
-	fprintf(stderr, "Failed to unset the stacksize limit. Guru problem!\n");
+	fprintf(stderr, "Failed to unset the stacksize limit. Guru problem! %s\n", strerror(errno));
 	exit(-1);
     }
+#endif
     size_str = NULL;
     rand_str = NULL;
     stdin_buf[0] = 0;
