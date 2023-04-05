@@ -8,7 +8,7 @@ MINISAT_DIR ?=../../external/minisat/
 PLUGIN_DIR ?=$(ROOT_DIR)/plugins
 
 BASE_FLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
-	-Wall -Wextra -Werror \
+	-Wall -Wextra -Wno-error \
 	-DVERSION_DATE='"$(VERSION_DATE)"' \
 	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
 

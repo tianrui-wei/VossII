@@ -634,11 +634,11 @@ fl_main(int argc, char *argv[])
         }
     } else {
         /* noX mode */
-        FP(stdout_fp, "     /\\           \n");
-        FP(stdout_fp, "    /  \\ /\\       \n");
-        FP(stdout_fp, "   /    VossII %s (%s)\n", FL_VERSION, VERSION_DATE);
-        FP(stdout_fp, "VOSS-LIBRARY-DIRECTORY = %s\n", RCDefault_dir);
-        FP(stdout_fp, "Temporary files directory = %s\n", Voss_tmp_dir);
+   //     FP(stdout_fp, "     /\\           \n");
+   //     FP(stdout_fp, "    /  \\ /\\       \n");
+   //     FP(stdout_fp, "   /    VossII %s (%s)\n", FL_VERSION, VERSION_DATE);
+   //     FP(stdout_fp, "VOSS-LIBRARY-DIRECTORY = %s\n", RCDefault_dir);
+   //     FP(stdout_fp, "Temporary files directory = %s\n", Voss_tmp_dir);
         if( start_file != NULL ) {
 	    // Create a dummy file that loads preamble.fl and start_file
 	    FILE *fp;
@@ -646,9 +646,9 @@ fl_main(int argc, char *argv[])
 	    if( !Mk_output_file_in_tmp_dir("load0", &fp, &filename) ) {
 		exit(-2);
 	    }
-	    fprintf(fp, "(_load \"%s/preamble.fl\" F) fseq ();\n",
-			binary_location);
-	    fprintf(fp, "((_load \"%s\" F) fseq ())", start_file);
+//	    fprintf(fp, "(_load \"%s/preamble.fl\" F) fseq ();\n",
+//			binary_location);
+//	    fprintf(fp, "((_load \"%s\" F) fseq ())", start_file);
 	    if( exit_on_failure ) {
 		fprintf(fp, " catch (exit 1)");
 	    }
@@ -665,30 +665,30 @@ fl_main(int argc, char *argv[])
 		    DIE("Should never happen");
 	    }
 	} else {
-	    Sprintf(buf, "%s/preamble.fl", binary_location);
+//	    Sprintf(buf, "%s/preamble.fl", binary_location);
 	    Read_from_file(buf, FALSE, FALSE);
 	}
         Set_default_break_handler();
-        while(1) {
-            switch( setjmp(toplevel_eval_env) ) {
-                case 0:
-                    /* All ok */
-                    if (gui_mode) {
-                        Emit_prompt("");
-                        do_parse(TRUE);
-                    }
-                    else
-                        do_parse_stdin(TRUE);
-                    break;
-                case 2:
-                    /* User interrupt with "return to top" */
-                    break;
-                default:
-                    DIE("Should never happen");
-                    break;
-            }
-        }
-    }
+//        while(1) {
+//            switch( setjmp(toplevel_eval_env) ) {
+//                case 0:
+//                    /* All ok */
+//                    if (gui_mode) {
+//                        Emit_prompt("");
+//                        do_parse(TRUE);
+//                    }
+//                    else
+//                        do_parse_stdin(TRUE);
+//                    break;
+//                case 2:
+//                    /* User interrupt with "return to top" */
+//                    break;
+//                default:
+//                    DIE("Should never happen");
+//                    break;
+//            }
+//        }
+   }
     printf("\n");
     return 0;
 }
