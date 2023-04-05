@@ -11,6 +11,7 @@
 #include <limits.h>
 #include <time.h>
 #include <stdlib.h>
+#include <whereami.h>
 #include "system.h"
 #include "graph.h"
 
@@ -249,14 +250,13 @@ static string
 get_binary_directory()
 {
     string tmp;
-    Sprintf(buf, "/proc/%d/exe", (int) getpid());
-    ssize_t sz = readlink(buf, path_buf, 1000);
-    (void) sz;
-    tmp = rindex(path_buf, '/');
-    if( tmp == NULL ) {
-        Eprintf("readlink did not find full path. WHAT???");
-    }
-    *tmp = 0;
+	int pathname_length, length;
+	length = wai_getExecutablePath(NULL, 0, &pathname_length);
+	if (length > 0) {
+		wai_getExecutablePath(path_buf, length, &pathname_length);
+		path_buf[length] = '\0';	
+	} else 
+		 { Eprintf("failed to find binary directory!");}
     string res = wastrsave(&strings, path_buf);
     return res;
 }
