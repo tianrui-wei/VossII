@@ -210,6 +210,13 @@ extern int dbg_tst_line_cnt;
 	    }			    overloads_t;
 	    g_ptr		    expr_t;
 		struct {
+		    string	file;
+		    int	line;
+			bool strict;
+			bool cached;
+			bool recursive;
+		} let_t;
+		struct {
 			g_ptr expr;
 			g_ptr default_expr;
 			bool     ok;
@@ -333,7 +340,7 @@ extern int dbg_tst_line_cnt;
 %type  <expr_t>		top_expr expr expr05 expr1 expr2 expr_list arg_expr
 %type	<fn_arg_expr_t> fn_arg_expr
 %type  <cl_t>		rev_expr_list
-%type  <decl_t>		decl cache_decl strict_decl fn_defs fn_def lhs_expr_list
+%type  <decl_t>		decl fn_defs fn_def lhs_expr_list
 %type  <str_t>		var_or_infix
 %type  <type_name_t>	type_name
 %type  <tpLptr_t>	type_list
@@ -343,6 +350,7 @@ extern int dbg_tst_line_cnt;
 %type  <varl_itemp_t>	var_list_item
 %type  <opt_typed_var_t> opt_typed_var;
 %type  <tvar_list_t>	tvarlist;
+%type  <let_t>			let_top;
 
 %right	CROSSPROD
 %right	FN_TYPE
@@ -479,34 +487,6 @@ stmt		: expr
 			free_buf(&var_buf);
 		    }
                 }
-		| cache_decl
-		{
-		    if( $1.ok ) {
-			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($1.expr, $1.default_expr);
-			res = Compile(symb_tbl, $1.expr, NULL, TRUE); 
-			if( res != NULL ) {
-			    symb_tbl = New_fn_def($1.var, res, symb_tbl,
-						  !file_load, $1.file, $1.line,
-						  ap);
-			    Free_result_ptr(res);
-			}
-		    }
-		}
-		| strict_decl
-		{
-		    if( $1.ok ) {
-			result_ptr res;
-			arg_names_ptr ap = Get_argument_names($1.expr, $1.default_expr);
-			res = Compile(symb_tbl, $1.expr, NULL, TRUE); 
-			if( res != NULL ) {
-			    symb_tbl = New_fn_def($1.var, res, symb_tbl,
-						  !file_load, $1.file, $1.line,
-						  ap);
-			    Free_result_ptr(res);
-			}
-		    }
-		}
 		| ADD_OPEN_OVERLOAD var_or_infix overload_list
 		{
 		    if( $3.ok ) {
@@ -810,172 +790,46 @@ var_list_item	: var_or_infix
 		}
 		;
 
-decl		: LET fn_defs
+decl		: let_top fn_defs
 		{
+            g_ptr res;
 		    if( $2.ok ) {
-			$$.file = $1.file;
-			$$.line = $1.line;
-			$$.var  = $2.var;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    $$.expr = Add_args($2.cnt,
-					       Make_APPL_ND(dbg, $2.expr));
-			} else {
-			    $$.expr = Add_args($2.cnt,$2.expr);
-			}
-			$$.default_expr  = $2.default_expr;
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok = TRUE;
+    			$$.file = $1.file;
+    			$$.line = $1.line;
+    			$$.var  = $2.var;
+                res = $2.expr;
+    			if( RCadd_debug_info ) {
+    			    g_ptr dbg = Make_Debug_Primitive($2.var,
+    							     $1.file, $1.line);
+                    res = Make_APPL_ND(dbg, res);
+    			}
+                if ($1.cached && $2.cnt > 0) {
+                    int	cache_nbr;
+			        g_ptr tmp;
+			        cache_nbr = Make_g_cache();
+			        tmp = Make_0inp_Primitive(P_CACHE);
+			        SET_CACHE_TBL(tmp, cache_nbr);
+			        res = Make_APPL_ND(
+				        Make_APPL_ND(tmp, Make_arglist($2.cnt)),
+				        res);
+                }
+			    if($1.strict && $2.cnt > 0 ) {
+			        g_ptr tmp = Make_0inp_Primitive(P_STRICT_ARGS);
+			        res = Make_APPL_ND(
+			    	    Make_APPL_ND(tmp, Make_arglist($2.cnt)),
+			    	    res);
+			    }
+                res = Add_args($2.cnt, res);
+                if ($1.recursive) {
+                    res = Make_1inp_Primitive(P_Y,
+                               Make_Lambda($2.var, res));
+                }
+                $$.expr = res;
+    			$$.default_expr  = $2.default_expr;
+    			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
+    			$$.ok = TRUE;
 		    } else {
-			$$.ok = FALSE;
-		    }
-		}
-		| LETREC fn_defs
-		{
-		    /* return: var = Y\var.\arg1.\arg2. . . .  .\argn.expr */
-		    if( $2.ok ) {
-			$$.file = $1.file;
-			$$.line = $1.line;
-			$$.var  = $2.var;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    $$.expr = Make_1inp_Primitive(P_Y,
-				    Make_Lambda($2.var,
-					Add_args($2.cnt,
-					         Make_APPL_ND(dbg,$2.expr))));
-			} else {
-			    $$.expr = Make_1inp_Primitive(P_Y,
-						Make_Lambda($2.var,
-						    Add_args($2.cnt,$2.expr)));
-			}
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok = TRUE;
-		    } else {
-			$$.ok = FALSE;
-		    }
-		}
-		;
-
-cache_decl	: C_LET fn_defs
-		{
-		    if( $2.ok ) {
-			g_ptr	res;
-			res = $2.expr;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    res = Make_APPL_ND(dbg, res);
-			}
-			if( $2.cnt > 0 ) {
-			    int	cache_nbr;
-			    g_ptr tmp;
-			    cache_nbr = Make_g_cache();
-			    tmp = Make_0inp_Primitive(P_CACHE);
-			    SET_CACHE_TBL(tmp, cache_nbr);
-			    res = Make_APPL_ND(
-				    Make_APPL_ND(tmp, Make_arglist($2.cnt)),
-				    res);
-			}
-			$$.expr = Add_args($2.cnt, res);
-			$$.var  = $2.var;
-			$$.file = $1.file;
-			$$.line = $1.line;
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok	= TRUE;
-		    } else {
-			$$.ok = FALSE;
-		    }
-		}
-		| C_LETREC fn_defs
-		{
-		    /* return: var = Y\var.\arg1.\arg2. . . . .\argn.expr */
-		    if( $2.ok ) {
-			g_ptr	res;
-			res = $2.expr;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    res = Make_APPL_ND(dbg, res);
-			}
-			if( $2.cnt > 0 ) {
-			    int	cache_nbr;
-			    g_ptr tmp;
-			    cache_nbr = Make_g_cache();
-			    tmp = Make_0inp_Primitive(P_CACHE);
-			    SET_CACHE_TBL(tmp, cache_nbr);
-			    res = Make_APPL_ND(
-				    Make_APPL_ND(tmp, Make_arglist($2.cnt)),
-				    res);
-			}
-			res = Add_args($2.cnt, res);
-			$$.expr = Make_1inp_Primitive(P_Y,
-						  Make_Lambda($2.var,res));
-			$$.var  = $2.var;
-			$$.file = $1.file;
-			$$.line = $1.line;
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok	= TRUE;
-		    } else {
-			$$.ok = FALSE;
-		    }
-		}
-		;
-
-strict_decl	: S_LET fn_defs
-		{
-		    if( $2.ok ) {
-			g_ptr	res;
-			res = $2.expr;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    res = Make_APPL_ND(dbg, res);
-			}
-			if( $2.cnt > 0 ) {
-			    g_ptr tmp = Make_0inp_Primitive(P_STRICT_ARGS);
-			    res = Make_APPL_ND(
-				    Make_APPL_ND(tmp, Make_arglist($2.cnt)),
-				    res);
-			}
-			$$.expr = Add_args($2.cnt, res);
-			$$.var  = $2.var;
-			$$.file = $1.file;
-			$$.line = $1.line;
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok	= TRUE;
-		    } else {
-			$$.ok = FALSE;
-		    }
-		}
-		| S_LETREC fn_defs
-		{
-		    /* return: var = Y\var.\arg1.\arg2. . . . .\argn.expr */
-		    if( $2.ok ) {
-			g_ptr	res;
-			res = $2.expr;
-			if( RCadd_debug_info ) {
-			    g_ptr dbg = Make_Debug_Primitive($2.var,
-							     $1.file, $1.line);
-			    res = Make_APPL_ND(dbg, res);
-			}
-			if( $2.cnt > 0 ) {
-			    g_ptr tmp = Make_0inp_Primitive(P_STRICT_ARGS);
-			    res = Make_APPL_ND(
-				    Make_APPL_ND(tmp, Make_arglist($2.cnt)),
-				    res);
-			}
-			res = Add_args($2.cnt, res);
-			$$.expr = Make_1inp_Primitive(P_Y,
-						  Make_Lambda($2.var,res));
-			$$.var  = $2.var;
-			$$.file = $1.file;
-			$$.line = $1.line;
-			if( $2.type != NULL ) { TypeHint($$.expr,$2.type); }
-			$$.ok	= TRUE;
-		    } else {
-			$$.ok = FALSE;
+			    $$.ok = FALSE;
 		    }
 		}
 		;
@@ -1907,6 +1761,14 @@ expr2		: VART
 		    $$ = Make_APPL_ND(Make_VAR_leaf($1), Make_STRING_leaf(tmp));
 		}
 		;
+
+let_top : LET      {$$.file = $1.file; $$.line = $1.line; $$.recursive = FALSE; $$.strict = FALSE; $$.cached = FALSE;}
+		| LETREC   {$$.file = $1.file; $$.line = $1.line; $$.recursive = TRUE; $$.strict = FALSE; $$.cached = FALSE;}
+		| S_LET    {$$.file = $1.file; $$.line = $1.line; $$.recursive = FALSE; $$.strict = TRUE; $$.cached = FALSE;}
+		| S_LETREC {$$.file = $1.file; $$.line = $1.line; $$.recursive = TRUE; $$.strict = TRUE; $$.cached = FALSE;}
+		| C_LET    {$$.file = $1.file; $$.line = $1.line; $$.recursive = FALSE; $$.strict = FALSE; $$.cached = TRUE;}
+		| C_LETREC {$$.file = $1.file; $$.line = $1.line; $$.recursive = TRUE; $$.strict = FALSE; $$.cached = TRUE;}
+        ;
 %%
 
 
