@@ -63,7 +63,7 @@
 
 /* All the standard include files that are used in fl */
 #include <stdio.h>
-// #include <strings.h>
+#include <strings.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -186,7 +186,7 @@ typedef struct impl_arg_rec	*impl_arg_ptr;
 #include	"minisat_ifc.h"
 #include	"draw_graph.h"
 #include	"debug.h"
-#include	"strings.h"
+#include	"vstrings.h"
 #include	"system.h"
 #include	"int_ops.h"
 #include	"list_ops.h"

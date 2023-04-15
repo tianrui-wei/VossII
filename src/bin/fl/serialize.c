@@ -8,7 +8,7 @@
 /*		Original author: Carl-Johan Seger, 2022			*/
 /*									*/
 /************************************************************************/
-#include "strings.h"
+#include "vstrings.h"
 #include "fsm.h"
 #include "table.h"
 #include "serialize.h"

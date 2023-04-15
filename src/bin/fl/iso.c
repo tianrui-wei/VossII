@@ -9,7 +9,7 @@
 /*                                                                            */
 /******************************************************************************/
 #include <time.h> // for testing...
-#include "strings.h"
+#include "vstrings.h"
 #include "buf.h"
 #include "graph.h"
 #include "pexlif.h"

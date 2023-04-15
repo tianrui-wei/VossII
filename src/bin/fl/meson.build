@@ -35,7 +35,7 @@ fl_source = [
 'draw_graph.c',
 'debug.c',
 'symbol.c',
-'strings.c',
+'vstrings.c',
 'int_ops.c',
 'list_ops.c',
 'system.c',
@@ -60,12 +60,10 @@ lfiles,
 pfiles
 ]
 
-loc_inc = include_directories('.')
-
 fl_lib = executable('fl', fl_source,
     dependencies: [vossii_dep, minisat_dep],
     link_with: vossii_lib,
-    include_directories: [fl_inc, loc_inc],
+    include_directories: [fl_inc],
     override_options : ['c_std=gnu99'],
     c_args: ['-D__STDC_LIMIT_MACROS', '-D__STDC_FORMAT_MACROS', '-DDEBUG', '-DVERSION_DATE=0000']
     )
