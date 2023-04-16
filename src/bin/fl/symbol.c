@@ -499,7 +499,9 @@ Mark_symbols()
             Mark(fp->expr_init);
             Mark(fp->expr_comb);
             Mark(fp->super_comb);
-            //Mark(fp->arg_names->defval);
+			for (arg_names_ptr ap = fp->arg_names; ap != NULL; ap = ap->next) {
+				Mark(ap->defval);
+			}
         } else {
             fp->expr = NULL;
             fp->expr_init = NULL;
@@ -562,6 +564,8 @@ Add_non_lazy_context_and_find_Userdefs(g_ptr node, symbol_tbl_ptr stbl)
     new_buf (&context, 100, sizeof(string));
     create_hash(&bound_var_tbl, 100, str_hash, str_equ);
     node = do_setjmp(&context, stbl, &node);
+//	if (GET_TYPE(node) == APPLY_ND)
+//		node = reorder(node);
     dispose_hash(&bound_var_tbl, NULLFCN);
     free_buf (&context); 
     return(node);
@@ -1920,7 +1924,7 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
 	//REVIEW: this looks weird
     FUB_ROF(&args, _arg_st, sp) {
         arg_names_ptr t = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
-		SET_REFCNT(sp->defval, MAX_REF_CNT);
+		// SET_REFCNT(sp->defval, MAX_REF_CNT);
         t->name = sp->name;
         t->defval = sp->defval;
         t->next = res;
@@ -2320,7 +2324,7 @@ get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_no
      if (IS_CONS(default_arg_node)) {
 		if (!IS_NIL(GET_CONS_HD(default_arg_node))) {
 			//TODO: this is very ugly and probably not needed
-			namep->defval =GET_CONS_HD(default_arg_node);
+			namep->defval = GET_CONS_HD(default_arg_node);
 			Mark(default_arg_node);
 			GC_Protect(default_arg_node);
 		}
