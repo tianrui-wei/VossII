@@ -557,6 +557,8 @@ do_setjmp(buffer *contextp, symbol_tbl_ptr stbl, g_ptr *nodep)
     return res;
 }
 
+// for functions that are real functions, not overloaded
+// reorder for overloaded functions in typechecker
 g_ptr
 Add_non_lazy_context_and_find_Userdefs(g_ptr node, symbol_tbl_ptr stbl)
 {

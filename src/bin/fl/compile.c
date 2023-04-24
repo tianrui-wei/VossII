@@ -46,8 +46,8 @@ Optimise(g_ptr node)
 {
     Check_Ref_Cnts(node);
 
-	if (GET_TYPE(node) == APPLY_ND)
-		node = reorder(node);
+//	if (GET_TYPE(node) == APPLY_ND)
+//		node = reorder(node);
 
     Check_Ref_Cnts(node);
 
@@ -109,6 +109,7 @@ reorder(g_ptr onode)
 	}
 	if (!IS_USERDEF(lhs)) goto reorder_finish;
 	fn = GET_USERDEF(lhs); // the actual function pointer
+    if (fn->overload) goto reorder_finish;
 	ASSERT(fn != NULL);
 	arg_names_ptr ap;
 	ap = fn->arg_names;
