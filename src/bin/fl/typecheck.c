@@ -6,6 +6,7 @@
 #include "typecheck.h"
 #include "graph.h"
 #include "symbol.h"
+#include "types.h"
 
 #define MAX_OVERLOAD_RESOLUTION_DEPTH	10000
 
@@ -27,6 +28,7 @@ extern old_yyin_ptr     cur_file;
 extern void		PR(g_ptr np);
 extern rec_mgr		name_list_rec_mgr;
 extern rec_mgr		impl_arg_rec_mgr;
+extern symbol_tbl_ptr	symb_tbl;
 
 /************************************************************************/
 /*			Local Variables					*/
@@ -209,9 +211,9 @@ TypeCheck(g_ptr *ondp, bool delayed, impl_arg_ptr *impl_argsp)
     create_hash(&lvars_tbl, 100, str_hash, str_equ);
     to_be_resolved = NULL;
     if( setjmp(*start_envp) == 0 ) {
-	node_type_ptr ntp = build_node_type_struct(&lvars_tbl, nd);
 	node_replace_ptr nrp;
 	int nbr_solns;
+	node_type_ptr ntp;
       redo_overload_resolution:
 #if 0
 	nbr_solns = nbr_succ_overload_res(to_be_resolved, &nrp, !delayed, 0);
@@ -251,6 +253,7 @@ TypeCheck(g_ptr *ondp, bool delayed, impl_arg_ptr *impl_argsp)
 	} else {
 	    // Not all overloadings resolved. Make them implicit overloadings
 	    int cnt = 1;
+		ntp = build_node_type_struct(&lvars_tbl, nd);
 	    result = ntp->type;
 	    impl_arg_ptr impl_args = NULL;
 	    for(node_type_ptr ntp = to_be_resolved; ntp != NULL;
@@ -2055,6 +2058,19 @@ build_node_type_struct(hash_record *lvars_tbl, g_ptr node)
 		    break;
 		case VAR: {
 		    node_type_ptr var = find_hash(lvars_tbl, GET_VAR(node));
+			if (var == NULL) {
+				//WIP: probably incorrect
+				fn_ptr fp = Find_Function_Def(symb_tbl,GET_VAR(node));
+				ASSERT(fp != NULL);
+				check_hint(node, res->type);
+				if( fp->overload ) {
+					res->unresolved = to_be_resolved;
+					to_be_resolved = res;
+				} else {
+					res->type = get_real_type(res->type);
+				}
+				return res;
+			}
 		    ASSERT( var != NULL );
 		    check_hint(node, var->type);
 		    INC_REFCNT(var->node);
