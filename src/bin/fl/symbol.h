@@ -115,6 +115,7 @@ typedef struct fn_rec {
         bool		    forward:1;
         bool		    overload:1;
         bool		    open_overload:1;
+		bool		    named:1;
         comment_list_ptr    comments;
         string		    name;
         g_ptr		    expr;

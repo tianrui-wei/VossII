@@ -6,6 +6,7 @@
 #include "symbol.h"
 #include "graph.h"
 #include "typecheck.h"
+#include "types.h"
 #include <fnmatch.h>
 
 /************************************************************************/
@@ -452,6 +453,7 @@ Init_symbol()
     fn_ptr dummy = (fn_ptr) get_fn_rec();
     dummy->ADT_level = ADT_level;
     dummy->name = s_dummy;
+    dummy->named = FALSE;
     dummy->next      = symb_tbl->def_list;
     symb_tbl->def_list = dummy;
     update_stbl(symb_tbl, dummy);
@@ -565,8 +567,10 @@ Add_non_lazy_context_and_find_Userdefs(g_ptr node, symbol_tbl_ptr stbl)
     new_buf (&context, 100, sizeof(string));
     create_hash(&bound_var_tbl, 100, str_hash, str_equ);
     node = do_setjmp(&context, stbl, &node);
-//	if (GET_TYPE(node) == APPLY_ND)
-//		node = reorder(node);
+	if (node != NULL) {
+		if (GET_TYPE(node) == APPLY_ND)
+			node = reorder(node);
+	}
     dispose_hash(&bound_var_tbl, NULLFCN);
     free_buf (&context); 
     return(node);
@@ -635,6 +639,7 @@ Add_Destructors(string name, typeExp_ptr new_type,
         tmp->non_lazy      = FALSE;
         tmp->forward       = FALSE;
         tmp->name          = dest_name;
+        tmp->named          = FALSE;
         tmp->file_name      = file;
         tmp->start_line_nbr = start_line;
         tmp->end_line_nbr   = line_nbr;
@@ -675,6 +680,7 @@ Add_Destructors(string name, typeExp_ptr new_type,
         save_fun->ADT_level      = ADT_level;
         save_fun->non_lazy       = FALSE;
         save_fun->forward        = FALSE;
+        save_fun->named = FALSE;
         save_fun->name           = save_fun_name;
         save_fun->file_name      = file;
         save_fun->start_line_nbr = start_line;
@@ -708,6 +714,7 @@ Add_Destructors(string name, typeExp_ptr new_type,
 	load_fun->in_use         = TRUE;
         load_fun->non_lazy       = FALSE;
         load_fun->forward        = FALSE;
+        load_fun->named           = FALSE;
         load_fun->name           = load_fun_name;
         load_fun->file_name      = file;
         load_fun->start_line_nbr = start_line;
@@ -782,6 +789,7 @@ InsertOverloadDef(string name, bool open_overload, oll_ptr alts,
     ret                 = (fn_ptr) get_fn_rec();
     ret->ADT_level      = ADT_level;
     ret->name           = name;
+    ret->named           = FALSE;
     ret->file_name      = file;
     ret->start_line_nbr = start_line;
     ret->end_line_nbr   = line_nbr;
@@ -819,6 +827,10 @@ AddToOpenOverloadDef(string name, oll_ptr alts, symbol_tbl_ptr stbl,
         FP(err_fp, "%s was not declared as an open_overload\n", name);
         return stbl;
     }
+	if (cur->named) {
+		FP(err_fp, "%s was declared as a named function\n", name);
+		return stbl;
+	}
     oll_ptr fp = cur->overload_list;
     if( fp == NULL ) {
         cur->overload_list = alts;
@@ -845,6 +857,7 @@ Make_forward_declare(string name, typeExp_ptr type, symbol_tbl_ptr stbl,
     fn_ptr ret = (fn_ptr) get_fn_rec();
     ret->ADT_level      = ADT_level;
     ret->forward        = TRUE;
+    ret->named        = FALSE;
     ret->visible        = TRUE;
     ret->in_use         = TRUE;
     ret->file_name      = file;
@@ -882,6 +895,7 @@ New_fn_def(string name, result_ptr res, symbol_tbl_ptr stbl, bool print,
     if( res == NULL )
         return( stbl );
     //
+    bool named = FALSE;
     if( stbl == NULL ) { stbl = create_empty_symb_tbl(); }
     if( cur_doc_comments != NULL ) {
         // If there are comments, reverse the list (to get it in right order)
@@ -899,6 +913,14 @@ New_fn_def(string name, result_ptr res, symbol_tbl_ptr stbl, bool print,
         clp->next = prev;
         cur_doc_comments = clp;
     }
+	arg_names_ptr ap;
+	while (ap != NULL) {
+		if (!IS_NIL(ap->defval)) {
+			named = TRUE;
+			break;
+		}
+		ap = ap->next;
+	}
     // Is this the definition of a forward_declare?
     fn_ptr cur = Find_Function_Def(stbl, name);
     if( cur && cur->forward ) {
@@ -942,6 +964,7 @@ New_fn_def(string name, result_ptr res, symbol_tbl_ptr stbl, bool print,
     ret->non_lazy       = FALSE;
     ret->forward        = FALSE;
     ret->name           = name;
+    ret->named           = named;
     ret->expr_init      = res->expr_init;
     ret->expr_comb      = res->expr_comb;
     ret->signature	= res->signature;
@@ -1362,6 +1385,7 @@ Add_ExtAPI_Function(string name, string strictness,
     ret->arg_names      = NULL;
     ret->non_lazy       = non_lazy;
     ret->forward        = FALSE;
+    ret->named          = FALSE;
     ret->name           = name;
     ret->expr           = expr;
     ret->signature	= Get_SHA256_signature(expr);
@@ -2276,6 +2300,9 @@ update_stbl(symbol_tbl_ptr stbl, fn_ptr fp)
     string name = fp->name;
     fn_ptr last = (fn_ptr) find_hash(stbl->tbl_ptr,(pointer) name);
     if( last == fp ) { return; }
+	if (last != NULL && last->named == TRUE) {
+		FP(err_fp, "Warning: function %s is defined as named, cannot overload\n", name);
+	}
     if(last != NULL && last != fp ) {
         delete_hash(stbl->tbl_ptr, (pointer) name);
     }

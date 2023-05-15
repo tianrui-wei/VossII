@@ -109,8 +109,8 @@ reorder(g_ptr onode)
 	}
 	if (!IS_USERDEF(lhs)) goto reorder_finish;
 	fn = GET_USERDEF(lhs); // the actual function pointer
-    if (fn->overload) goto reorder_finish;
 	ASSERT(fn != NULL);
+    if (fn->overload) goto reorder_finish; // Don't touch overloaded functions
 	arg_names_ptr ap;
 	ap = fn->arg_names;
 	if (IS_PRIM_FN(fn->expr)) goto reorder_finish;
