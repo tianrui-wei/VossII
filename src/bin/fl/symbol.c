@@ -427,8 +427,7 @@ static bool             get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_s
 static g_ptr            ignore_simple_P_PCATCH(g_ptr onode);
 static g_ptr            ignore_P_CACHE(g_ptr onode);
 static g_ptr            ignore_P_STRICT_ARGS(g_ptr onode);
-static bool		get_HFL_arg_name(g_ptr node, string *namep,
-					 g_ptr *next_nodep);
+static bool		get_HFL_arg_name(g_ptr node, _arg_st *namep, g_ptr *next_nodep);
 static fn_ptr		get_fn_rec();
 
 /************************************************************************/
@@ -1886,10 +1885,9 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
         node = GET_LAMBDA_BODY(node);
     }
     if( arg_cnt == 0 ) {
-        //FIXME: implement this part later for HFl
 	node = ignore_P_DEBUG(node);
-	new_buf(&args, 10, sizeof(string));
-	string arg;
+	new_buf(&args, 10, sizeof(_arg_st));
+	_arg_st arg;
 	g_ptr next;
 	while( get_HFL_arg_name(node, &arg, &next) ) {
 	    push_buf(&args, (pointer) &arg);
@@ -1923,7 +1921,6 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
 		g_node = g_node_next;
     }
   make_arg_list:
-	//REVIEW: this looks weird
     FUB_ROF(&args, _arg_st, sp) {
         arg_names_ptr t = (arg_names_ptr) new_rec(&arg_names_rec_mgr);
 		// SET_REFCNT(sp->defval, MAX_REF_CNT);
@@ -1933,6 +1930,7 @@ Get_argument_names(g_ptr onode, g_ptr dnode)
 		Mark(t->defval);
 		res = t;
 	}
+	//REVIEW: this looks weird
     free_buf (&args);
     return res;
 }
@@ -2320,24 +2318,22 @@ get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_no
     node = GET_APPLY_LEFT(node);
     if( !IS_LAMBDA(node) ) return FALSE;
     if (default_arg_node == NULL) {
-        namep->defval = Make_NIL();
-        *next_default_arg_node = NULL;
+		return FALSE;
+//        namep->defval = NULL;
+//        *next_default_arg_node = NULL;
     } else {
      if (IS_CONS(default_arg_node)) {
-		if (!IS_NIL(GET_CONS_HD(default_arg_node))) {
-			//TODO: this is very ugly and probably not needed
-			namep->defval = GET_CONS_HD(default_arg_node);
-			Mark(default_arg_node);
-			GC_Protect(default_arg_node);
-		}
-		else {
-			namep->defval = Make_NIL();
-		}
+		 //TODO: this is very ugly and probably not needed
+		 namep->defval = GET_CONS_HD(default_arg_node);
+		 Mark(namep->defval);
+		 GC_Protect(namep->defval);
         *next_default_arg_node = GET_CONS_TL(default_arg_node);
-    } else {
+    } else if (IS_NIL(default_arg_node)) {
         namep->defval = Make_NIL();
-        *next_default_arg_node = NULL;
-     }
+        *next_default_arg_node = Make_NIL();
+     } else {
+		 return FALSE;
+	 }
     }
 	Mark(namep->defval);
 	GC_Protect(namep->defval);
@@ -2347,7 +2343,7 @@ get_named_arg(g_ptr node, g_ptr default_arg_node, _arg_st *namep, g_ptr *next_no
 }
 
 static bool
-get_HFL_arg_name(g_ptr node, string *namep, g_ptr *next_nodep)
+get_HFL_arg_name(g_ptr node, _arg_st *namep, g_ptr *next_nodep)
 {
     if( !IS_APPLY(node) ) return FALSE;
     if( !IS_LEAF_VAR(GET_APPLY_RIGHT(node)) ) return FALSE;
@@ -2355,12 +2351,13 @@ get_HFL_arg_name(g_ptr node, string *namep, g_ptr *next_nodep)
     node = GET_APPLY_LEFT(node);
     if( !IS_APPLY(node) ) return FALSE;
     if( !IS_STRING(GET_APPLY_RIGHT(node)) ) return FALSE;
-    *namep = GET_STRING(GET_APPLY_RIGHT(node));
+    namep->name = GET_STRING(GET_APPLY_RIGHT(node));
+	namep->defval = Make_NIL();
     node = GET_APPLY_LEFT(node);
     if( !IS_LEAF_VAR(GET_APPLY_LEFT(node)) ) return FALSE;
     node = GET_APPLY_RIGHT(node);
     if( !IS_LAMBDA(node) ) return FALSE;
-    if( !STREQ(GET_LAMBDA_VAR(node), *namep) ) return FALSE;
+    if( !STREQ(GET_LAMBDA_VAR(node), namep->name) ) return FALSE;
     node = GET_LAMBDA_BODY(node);
     if( !IS_LAMBDA(node) ) return FALSE;
     if( !STREQ(GET_LAMBDA_VAR(node), s_CELL) ) return FALSE;
