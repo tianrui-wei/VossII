@@ -8,9 +8,10 @@ MINISAT_DIR ?=../../external/minisat/
 PLUGIN_DIR ?=$(ROOT_DIR)/plugins
 
 BASE_FLAGS = $(DEBUG_FLAG) $(OPTIMIZATION_FLAG) $(FL_OPTIONS) \
-	-Wall -Wextra -Werror \
+	-Wall -Wextra -Werror -Wno-unknown-warning -Wno-unused-but-set-variable -Wno-single-bit-bitfield-constant-conversion -Wno-unused-command-line-argument -Wno-misleading-indentation \
 	-DVERSION_DATE='"$(VERSION_DATE)"' \
-	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1
+	-DDEFAULT_PLUGIN_DIR='"$(PLUGIN_DIR)"' -DFL_BINARY=1x
+
 
 CFLAGS += $(BASE_FLAGS) $(COMPATIBILITY_FLAG)
 CXXFLAGS += $(BASE_FLAGS) -fpermissive -Wno-error
@@ -18,7 +19,7 @@ CXXFLAGS += $(BASE_FLAGS) -fpermissive -Wno-error
 ifeq '' '$(findstring clang++,$(CX))'
   FL_LIB_FLAGS = -lncurses -ldl -ledit
 else
-  FL_LIB_FLAGS = -lncurses -ldl -ledit -fuse-ld=$(subst clang++,lld,$(CX))
+  FL_LIB_FLAGS = -lncurses -ldl -ledit -fuse-ld=mold
 endif
 
 INC = -I../../include -I$(MINISAT_DIR)/include $(TCL_INCLUDE) -DROOT_DIR='"$(ROOT_DIR)"'
@@ -47,7 +48,7 @@ fl: $(OBJ) $(LIB)
 	$(CC) $(CFLAGS) $(INC) -c $<
 
 .cc.o:
-	$(CXX) $(CXXFLAGS) $(CXXFLAGS) $(INC) -c $<
+	$(CX) $(CXXFLAGS) $(CXXFLAGS) $(INC) -c $<
 
 y.tab.c: language.y fl.h language.h graph.h prefs_ext.h
 	@$(YACC) -d -v language.y

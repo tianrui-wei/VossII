@@ -8,10 +8,13 @@
 /*		Original author: Carl-Johan Seger, 2019			*/
 /*									*/
 /************************************************************************/
+#include "buf.h"
+#include "fl.h"
 #include "strings.h"	// Need the vector/node name data structures
 #include "fsm.h"
 #include "graph.h"
 #include "pexlif.h"
+#include "types.h"
 
 /* ------------- Global variables -------------- */
 value_type		current_type;
@@ -120,7 +123,8 @@ static hash_record  node_comp_pair_tbl;
 //
 static hash_record  *all_name_tblp;
 static rec_mgr      *vec_info_rec_mgrp;
-static rec_mgr      *ilist_rec_mgrp;
+static rec_mgr *ilist_rec_mgrp;
+static rec_mgr      *nlist_rec_mgrp;
 static rec_mgr      *idx_list_rec_mgrp;
 static ustr_mgr	    lstrings;
 static rec_mgr	    *vec_rec_mgrp;
@@ -129,7 +133,9 @@ static rec_mgr	    *vis_io_rec_mgrp;
 static rec_mgr	    *vis_rec_mgrp;
 static rec_mgr	    *vis_list_rec_mgrp;
 static rec_mgr	    *attr_list_rec_mgrp;
-static buffer	    attr_buf;
+static buffer attr_buf;
+static uint64_t fsm_inode_cnt;
+//static uint64_t     fsm_wnode_cnt;
 static buffer	    *nodesp;
 static buffer	    *compositesp;
 static buffer	    *top_inpsp;
@@ -137,7 +143,8 @@ static buffer	    *top_outsp;
 static buffer	    *propsp;
 static hash_record  *old_all_name_tblp;
 static rec_mgr      *old_vec_info_rec_mgrp;
-static rec_mgr      *old_ilist_rec_mgrp;
+static rec_mgr *old_ilist_rec_mgrp;
+static rec_mgr      *old_nlist_rec_mgrp;
 static rec_mgr      *old_idx_list_rec_mgrp;
 static rec_mgr	    *old_vec_rec_mgrp;
 static rec_mgr	    *old_range_rec_mgrp;
@@ -150,7 +157,7 @@ static buffer	    *old_compositesp;
 static buffer	    *old_top_inpsp;
 static buffer	    *old_top_outsp;
 static buffer	    *old_propsp;
-static ilist_ptr    idx_map_result;
+static nlist_ptr    idx_map_result;
 static ilist_ptr    im_cur;
 static hash_record  idx_list_uniq_tbl;
 static hash_record  bb_tbl;;
@@ -208,7 +215,10 @@ static int	    temporary_node_cnt = 0;
 static int	    max_rank = 1;
 
 static int	    BDD_size_limit;
-static bool	    information_flow_weakening;
+static bool information_flow_weakening;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-variable"
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 static string state_holding_names [] = {
 	"draw_adff",
@@ -284,7 +294,7 @@ static bool           create_event_buffer(ste_ptr ste, buffer *ebufp, g_ptr wl,
                                           g_ptr ant, g_ptr cons, g_ptr trl,
                                           bool abort_ASAP);
 static void           process_event(buffer *event_bufp, int time);
-static void           record_trace(int idx, int time, gbv H, gbv L);
+static void           record_trace(int node_idx, int idx, int time, gbv H, gbv L);
 static ste_ptr        create_ste(fsm_ptr fsm, value_type type);
 static void           push_ste(ste_ptr ste);
 static void           pop_ste();
@@ -306,7 +316,8 @@ static pointer        ste_gmap2_fn(gmap_info_ptr ip, pointer a, pointer b);
 static unint          idx_list_hash(pointer key, unint n);
 static bool           idx_list_equ(pointer k1, pointer k2);
 static string         op2str(ncomp_ptr cp);
-static void           print_nodes(odests fp, fsm_ptr fsm);
+static void print_nodes(odests fp, fsm_ptr fsm);
+static void           dbg_print_nodes(odests fp);
 static void           print_composites(odests fp);
 static string         anon2real(vstate_ptr vp, string aname);
 static void           print_sch_tree(vstate_ptr vp, int indent, sch_ptr sch);
@@ -317,27 +328,30 @@ static string         compute_sha256_signature(fsm_ptr fsm);
 static formula        fsm_eq_fn(pointer p1, pointer p2, bool identical);
 static string         ste2str_fn(pointer p);
 static int            get_wexpr_size(g_ptr we);
-static ilist_ptr      ilist_copy(ilist_ptr ip);
-static ilist_ptr      make_input_arg(g_ptr we, int sz, hash_record *vtblp,
+static ilist_ptr ilist_copy(ilist_ptr ip);
+static nlist_ptr      nlist_copy(nlist_ptr ip);
+static nlist_ptr      make_input_arg(g_ptr we, int sz, hash_record *vtblp,
                                      string hier, bool pdel);
 static idx_list_ptr   find_insert_idx(idx_list_ptr ip);
 static void           add_fanout(nnode_ptr np, int comp_idx);
-static void           add_fanouts(ilist_ptr inps, int comp_idx);
+static void           add_fanouts(nlist_ptr inps, int comp_idx);
 static bool           compile_expr(hash_record *vtblp, string hier,
-                                   ilist_ptr outs, g_ptr we, bool pdel);
+                                   nlist_ptr outs, g_ptr we, bool pdel);
 static string         mk_vec_name(string base, int sz);
-static ilist_ptr      get_lhs_indices(hash_record *vtblp, string hier, g_ptr e);
+static nlist_ptr      get_lhs_indices(hash_record *vtblp, string hier, g_ptr e);
 static void           report_source_locations(odests dfp);
-static ilist_ptr      declare_vector(hash_record *vtblp, string hier,
+static nlist_ptr      declare_vector(hash_record *vtblp, string hier,
                                      string name, bool transient,
-                                     ilist_ptr act_map, string value_list);
+                                     nlist_ptr act_map, string value_list);
 static int            find_node_index(vec_ptr decl, vec_ptr vp, int start);
-static string         idx2name(int idx);
+static string idx2name(int node_idx, int idx);
+static string         idx2node_name(int idx);
 static bool           idx_is_user_defined(int idx);
 static bool           ilist_is_user_defined(ilist_ptr il);
 static ilist_ptr      vec2indices(string name);
-static int            name2idx(string name);
-static ilist_ptr      map_vector(hash_record *vtblp, string hier, string name,
+static int name2idx(string name);
+static int            name2node_idx(string name);
+static nlist_ptr      map_vector(hash_record *vtblp, string hier, string name,
                                  bool ignore_missing);
 static int            vec_size(vec_ptr vec);
 static int            get_stride(vec_ptr vp);
@@ -345,12 +359,14 @@ static bool           inside(int i, int upper, int lower);
 static int            find_index_from_end(int i, range_ptr rp);
 static bool           is_full_range(vec_ptr v1, vec_ptr v2);
 static int            ilist_sel(ilist_ptr ip, int idx);
-static void           map_node(vec_ptr decl, vec_ptr ivec, ilist_ptr map,
+static void           map_node(vec_ptr decl, vec_ptr ivec, nlist_ptr map,
                                int cur);
 static int            compute_ilist_length(ilist_ptr l);
-static ilist_ptr      ilist_append(ilist_ptr l1, ilist_ptr l2);
-static ilist_ptr      append_range(ilist_ptr l, int i_from, int i_to);
-static ilist_ptr      translate_range(ilist_ptr map, int from, int to);
+static ilist_ptr ilist_append(ilist_ptr l1, ilist_ptr l2);
+static int            compute_nlist_length(nlist_ptr l);
+static nlist_ptr      nlist_append(nlist_ptr l1, nlist_ptr l2);
+static ilist_ptr      append_range(ilist_ptr l, int nd_idx, int i_from, int i_to);
+static nlist_ptr      translate_range(ilist_ptr map, int from, int to);
 static void           geq_fn(int size, gbv *av, gbv *bv, gbv *resv) ;
 static void           sub_fn(int size, gbv *av, gbv *bv, gbv *resv) ;
 static void           ITE_fn(int size, gbv cH, gbv cL, gbv *av, gbv *bv,
@@ -415,7 +431,7 @@ static void           switch_to_ints();
 static void           BDD_cHL_Print(odests fp, gbv H, gbv L);
 static void           bexpr_cHL_Print(odests fp, gbv H, gbv L);
 static void           switch_to_BDDs();
-static int            update_node(ste_ptr ste, int idx, gbv Hnew, gbv Lnew);
+static int            update_node(ste_ptr ste, int node_idx, int idx, gbv Hnew, gbv Lnew);
 static gbv *          allocate_value_buf(int sz, gbv H, gbv L);
 static bool           initialize(ste_ptr ste, bool trace_all);
 static sch_ptr        mk_repeat(vstate_ptr vp, char *anon);
@@ -542,13 +558,24 @@ Fsm_Init()
     for (unsigned int i = 0; i < sizeof(state_holding_names) / sizeof(string) ; i++) {
 	string n = wastrsave(&strings, *p);
 	insert_hash(&state_holding_tbl, n, n);
-	p++;
+        p++;
     }
 }
 
-string
-get_real_name(vec_info_ptr ip, int oidx)
-{
+string get_node_real_name(vec_info_ptr ip) {
+  vec_ptr decl = ip->declaration;
+  string res = strtemp(ip->hierarchy);
+  while (decl != NULL) {
+    if (decl->type != INDEX) {
+      strappend(decl->u.name);
+      decl = decl->next;
+    }
+  }
+  return res;
+}
+
+//FIXME: currently, the oidx is ignored
+string get_real_name(vec_info_ptr ip, int oidx) {
     vec_ptr decl = ip->declaration;
     string res = strtemp(ip->hierarchy);
     int idx = oidx;
@@ -683,8 +710,8 @@ write_ncomp_rec(FILE *fp, pointer p)
     else {
 	DIE("Should not happen!");
     }
-    write_ilist_ptr(fp, vp->inps);
-    write_ilist_ptr(fp, vp->outs);
+    write_nlist_ptr(fp, vp->inps);
+    write_nlist_ptr(fp, vp->outs);
 }
 
 void
@@ -768,8 +795,8 @@ read_ncomp_rec(FILE *fp, pointer p)
 	default:
 	    DIE("Should never happen!");
     }
-    read_ilist_ptr(fp, &(vp->inps));
-    read_ilist_ptr(fp, &(vp->outs));
+    read_nlist_ptr(fp, &(vp->inps));
+    read_nlist_ptr(fp, &(vp->outs));
 }
 
 
@@ -926,11 +953,14 @@ nodes(g_ptr redex)
     new_buf(&res_buf, COUNT_BUF(&(fsm->nodes)), sizeof(string));
     nnode_ptr np;
     FOR_BUF(&(fsm->nodes), nnode_rec, np) {
-	int start = np->vec->map->from;
-	string nname = get_real_name(np->vec, np->idx-start);
+  // int start = np->vec->map->ilist->from;
+  // NOTE: the added assumption is that each node->idx has no representation
+  // reguarding actual bit layout
+  //FIXME: for now, we simply always pass in 0
+	string nname = get_real_name(np->vec, 0);
 	if( *nname != '!' ) {
 	    nname = wastrsave(&strings, nname);
-	    int idx = name2idx(nname);
+	    int idx = name2node_idx(nname);
 	    if( idx >= 0 ) { 
 		push_buf(&res_buf, &nname);
 	    } else {
@@ -979,14 +1009,14 @@ edges(g_ptr redex)
     g_ptr tail = redex;
     nnode_ptr np;
     FOR_BUF(&(fsm->nodes), nnode_rec, np) {
-        int start = np->vec->map->from;
-        string sname = get_real_name(np->vec, np->idx-start);
+        int start = np->vec->map->ilist->from;
+        string sname = get_real_name(np->vec, 0);
         if(*sname != '!') {
 	    g_ptr from = Make_STRING_leaf(wastrsave(&strings, sname));
 	    for(idx_list_ptr ilp = np->fanouts; ilp != NULL; ilp = ilp->next) {
-                ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, ilp->idx);
-	        FOREACH_NODE(nd, cp->outs) {
-                    string tname = idx2name(nd);
+              ncomp_ptr cp = (ncomp_ptr)M_LOCATE_BUF(compositesp, ilp->idx);
+	        FOREACH_NNODE(nd, cp->outs) {
+                    string tname = idx2node_name(nd->node_idx);
 		    g_ptr to = Make_STRING_leaf(wastrsave(&strings, tname));
                     g_ptr pair = Make_PAIR_ND(from, to);
                     APPEND1(tail, pair);
@@ -1091,8 +1121,8 @@ visualization_nodes(g_ptr redex)
     nnode_ptr np;
     FOR_BUF(&(fsm->nodes), nnode_rec, np) {
 	if( get_vis_info_at_level(np->draw_info, GET_INT(g_level)) != NULL ) {
-	    int start = np->vec->map->from;
-	    string nname = get_real_name(np->vec, np->idx-start);
+	    int start = np->vec->map->ilist->from;
+	    string nname = get_real_name(np->vec, 0);
 	    if( *nname != '!' ) {
 		g_ptr s = Make_STRING_leaf(wastrsave(&strings, nname));
 		APPEND1(tail, s);
@@ -1114,7 +1144,7 @@ get_latch_type(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
         pop_fsm();
         MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1147,7 +1177,7 @@ is_latch(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
         pop_fsm();
         MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1184,7 +1214,7 @@ is_input(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
         pop_fsm();
         MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1211,7 +1241,7 @@ is_phase_delay(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
         pop_fsm();
         MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1244,7 +1274,7 @@ get_visualization_id(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1274,7 +1304,7 @@ get_visualization_pinst_cnt(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1304,7 +1334,7 @@ get_visualization_pfn(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1334,7 +1364,7 @@ get_visualization_attributes(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1372,7 +1402,7 @@ get_visualization_fanins(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1390,7 +1420,7 @@ get_visualization_fanins(g_ptr redex)
     g_ptr tail = redex;
     for(vis_io_ptr vip = vp->fa_inps; vip != NULL; vip = vip->next) {
 	g_ptr pair = Make_CONS_ND(Make_STRING_leaf(vip->f_vec),
-				  ilist2nds(vip->acts));
+				  ilist2nds(vip->acts->ilist));
 	SET_CONS_HD(tail, pair);
 	SET_CONS_TL(tail, Make_NIL());
 	tail = GET_CONS_TL(tail);
@@ -1410,7 +1440,7 @@ get_visualization_outputs(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1428,7 +1458,7 @@ get_visualization_outputs(g_ptr redex)
     g_ptr tail = redex;
     for(vis_io_ptr vip = vp->fa_outs; vip != NULL; vip = vip->next) {
 	g_ptr pair = Make_CONS_ND(Make_STRING_leaf(vip->f_vec),
-				  ilist2nds(vip->acts));
+				  ilist2nds(vip->acts->ilist));
 	SET_CONS_HD(tail, pair);
 	SET_CONS_TL(tail, Make_NIL());
 	tail = GET_CONS_TL(tail);
@@ -1448,7 +1478,7 @@ fanin(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, FailBuf);
@@ -1460,8 +1490,8 @@ fanin(g_ptr redex)
     int composite = np->composite;
     if( composite >= 0 ) {
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, composite);
-	FOREACH_NODE(nd, cp->inps) {
-	    g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2name(nd)));
+	FOREACH_NNODE(nd, cp->inps) {
+	    g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2node_name(nd->node_idx)));
 	    APPEND1(tail, s);
 	}
     }
@@ -1480,7 +1510,7 @@ excitation_function(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1514,7 +1544,7 @@ fanin_dfs(g_ptr redex)
     int cnt = 0;
     while( !IS_NIL(nodes) ) {
 	string node = GET_STRING(GET_CONS_HD(nodes));
-	int idx = name2idx(node);
+	int idx = name2node_idx(node);
 	if( idx < 0 ) {
 	    pop_fsm();
 	    MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1533,8 +1563,9 @@ fanin_dfs(g_ptr redex)
 	pop_buf(&todo_buf, &nd_idx);
 	cnt--;
 	if( find_hash(&done_tbl, INT2PTR(nd_idx)) == NULL ) {
-	    insert_hash(&done_tbl, INT2PTR(nd_idx), INT2PTR(1));
-	    string name = wastrsave(&strings, idx2name(nd_idx));
+          insert_hash(&done_tbl, INT2PTR(nd_idx), INT2PTR(1));
+          //TODO: is this correct???
+	    string name = wastrsave(&strings, idx2node_name(nd_idx));
 	    APPEND1(tail, Make_STRING_leaf(name));
 	    bool keep_going = TRUE;
 	    if( cnt < 0 ) {
@@ -1552,11 +1583,14 @@ fanin_dfs(g_ptr redex)
 		nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd_idx);
 		int composite = np->composite;
 		if( composite >= 0 ) {
-		    ncomp_ptr cp =
-			(ncomp_ptr) M_LOCATE_BUF(compositesp, composite);
-		    FOREACH_NODE(nd, cp->inps) {
+                    ncomp_ptr cp =
+                      (ncomp_ptr)M_LOCATE_BUF(compositesp, composite);
+                    FOREACH_NNODE(nptr, cp->inps) {
+		    FOREACH_NODE(nd, nptr->ilist) {
 			push_buf(&todo_buf, &nd);
-		    }
+		    }                  
+                    }
+
 		}
 	    }
 	}
@@ -1576,7 +1610,7 @@ fanout(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1587,8 +1621,8 @@ fanout(g_ptr redex)
     nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, idx);
     for(idx_list_ptr ilp = np->fanouts; ilp != NULL; ilp = ilp->next) {
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, ilp->idx);
-	FOREACH_NODE(nd, cp->outs) {
-	    g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2name(nd)));
+	FOREACH_NNODE(nd, cp->outs) {
+	    g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2node_name(nd->node_idx)));
 	    APPEND1(tail, s);
 	}
     }
@@ -1611,7 +1645,7 @@ fanout_dfs(g_ptr redex)
     int cnt = 0;
     while( !IS_NIL(nodes) ) {
 	string node = GET_STRING(GET_CONS_HD(nodes));
-	unint idx = name2idx(node);
+	unint idx = name2node_idx(node);
 	push_buf(&todo_buf, &idx);
 	cnt++;
 	nodes = GET_CONS_TL(nodes);
@@ -1624,9 +1658,10 @@ fanout_dfs(g_ptr redex)
 	unint nd_idx;
 	pop_buf(&todo_buf, &nd_idx);
 	cnt--;
-	if( find_hash(&done_tbl, INT2PTR(nd_idx)) == NULL ) {
+        if (find_hash(&done_tbl, INT2PTR(nd_idx)) == NULL) {
+          //TODO: is this correct?
 	    insert_hash(&done_tbl, INT2PTR(nd_idx), INT2PTR(1));
-	    string name = wastrsave(&strings, idx2name(nd_idx));
+	    string name = wastrsave(&strings, idx2node_name(nd_idx));
 	    APPEND1(tail, Make_STRING_leaf(name));
 	    bool keep_going = TRUE;
 	    if( cnt < 0 ) {
@@ -1643,10 +1678,15 @@ fanout_dfs(g_ptr redex)
 	    if( keep_going ) {
 		nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd_idx);
 		for(idx_list_ptr ip = np->fanouts; ip != NULL; ip = ip->next) {
-		    ncomp_ptr cp = (ncomp_ptr)M_LOCATE_BUF(compositesp,ip->idx);
-		    FOREACH_NODE(nd, cp->outs) {
+                    ncomp_ptr cp =
+                      (ncomp_ptr)M_LOCATE_BUF(compositesp, ip->idx);
+                    FOREACH_NNODE(nptr, cp->outs) {
+                  
+
+		    FOREACH_NODE(nd, nptr->ilist) {
 			push_buf(&todo_buf, &nd);
-		    }
+                }
+                                      }
 		}
 	    }
 	}
@@ -1666,7 +1706,7 @@ node2vector(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1692,7 +1732,7 @@ node2value_list(g_ptr redex)
     fsm_ptr fsm = (fsm_ptr) GET_EXT_OBJ(g_fsm);
     string node = GET_STRING(g_node);
     push_fsm(fsm);
-    int idx = name2idx(node);
+    int idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
@@ -1766,12 +1806,13 @@ basename(g_ptr redex)
     string node = GET_STRING(g_node);
     push_fsm(fsm);
     int idx = name2idx(node);
+    int node_idx = name2node_idx(node);
     if( idx < 0 ) {
 	pop_fsm();
 	MAKE_REDEX_FAILURE(redex, Fail_pr("Node %s not in fsm", node));
 	return;
     }
-    string bname = idx2name(idx);
+    string bname = idx2name(node_idx, idx);
     MAKE_REDEX_STRING(redex, wastrsave(&strings, bname));
     pop_fsm();
     DEC_REF_CNT(l);
@@ -1927,7 +1968,7 @@ visualization_set_stop_nodes(g_ptr redex)
 	g_ptr nl = Vec2nodes(vec);
 	for(g_ptr cur = nl; !IS_NIL(cur); cur = GET_CONS_TL(cur)) {
 	    string nd = GET_STRING(GET_CONS_HD(cur));
-	    int idx = name2idx(nd);
+	    int idx = name2node_idx(nd);
 	    if( idx < 0 ) {
 		FP(warning_fp, "Cannot find node %s in fsm. Ignored.", nd);
 	    } else {
@@ -2965,13 +3006,13 @@ mk_vstate(fsm_ptr fsm)
     return vp;
 }
 
-static g_ptr
-ilist2nds(ilist_ptr il)
-{
+static g_ptr ilist2nds(ilist_ptr il) {
+  // FIXME: this is not correctly implemented
+  // currently it will create many duplicate nodes (really same node called from different subindex into it)
     g_ptr res = Make_NIL();
     g_ptr tail = res;
-    FOREACH_NODE(nd, il) {
-	g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2name(nd)));
+    FOREACH_INODE(ind, il) {
+  g_ptr s = Make_STRING_leaf(wastrsave(&strings, idx2node_name(ind->node_idx)));
 	SET_CONS_HD(tail, s);
 	SET_CONS_TL(tail, Make_NIL());
 	tail = GET_CONS_TL(tail);
@@ -3007,7 +3048,8 @@ create_fsm()
 {
     hash_record	*_all_name_tblp;
     rec_mgr     *_vec_info_rec_mgrp;
-    rec_mgr     *_ilist_rec_mgrp;
+    rec_mgr *_ilist_rec_mgrp;
+    rec_mgr     *_nlist_rec_mgrp;  
     rec_mgr     *_idx_list_rec_mgrp;
     rec_mgr	*_vec_rec_mgrp;
     rec_mgr	*_range_rec_mgrp;
@@ -3034,6 +3076,9 @@ create_fsm()
     _ilist_rec_mgrp = &(fsm->ilist_rec_mgr);
     new_mgr(_ilist_rec_mgrp, sizeof(ilist_rec));
     //
+    _nlist_rec_mgrp = &(fsm->nlist_rec_mgr);
+    new_mgr(_nlist_rec_mgrp, sizeof(nlist_rec));
+    //  
     _idx_list_rec_mgrp = &(fsm->idx_list_rec_mgr);
     new_mgr(_idx_list_rec_mgrp, sizeof(idx_list_rec));
     //
@@ -3205,10 +3250,10 @@ event_cmp(const void *p1, const void *p2)
     event_ptr e1 = *((event_ptr *) p1);
     event_ptr e2 = *((event_ptr *) p2);
     if( e2->time == e1->time ) {
-	if( e1->nd_idx == e2->nd_idx ) {
+	if( e1->bit_idx == e2->bit_idx ) {
 	    return( e1->type - e2->type );
 	} else {
-	    return( e2->nd_idx - e1->nd_idx );
+	    return( e2->bit_idx - e1->bit_idx );
 	}
     } else {
 	return( e2->time - e1->time );
@@ -3226,7 +3271,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	string node;
 	int from, to;
 	extract_four_tuple(t, &when, &node, &from, &to);
-	int nd_idx = name2idx(node);
+        int nd_idx = name2node_idx(node);
+        int bit_idx = name2idx(node);
 	if(nd_idx < 0) {
 	    Fail_pr("Cannot find node %s in weakening list\n", node);
 	    longjmp(event_jmp_env, 1);
@@ -3235,7 +3281,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	int event_id = event_id_cnt++;
 	ep->event_id = event_id;
 	ep->type = start_weak;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;
 	ep->time = from;
 	ep->H = when;
 	ep->L = when;
@@ -3243,7 +3290,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	ep = new_rec(event_rec_mgrp);
 	ep->event_id = event_id;
 	ep->type = end_weak;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = to;
 	ep->H = when;
 	ep->L = when;
@@ -3255,7 +3303,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	string node;
 	int from, to;
 	extract_five_tuple(t, &when, &node, &val, &from, &to);
-	int nd_idx = name2idx(node);
+        int nd_idx = name2node_idx(node);
+        int bit_idx = name2idx(node);      
 	if(nd_idx < 0) {
 	    Fail_pr("Cannot find node %s in antecedent\n", node);
 	    longjmp(event_jmp_env, 1);
@@ -3264,7 +3313,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	int event_id = event_id_cnt++;
 	ep->event_id = event_id;
 	ep->type = start_ant;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;
 	ep->time = from;
 	ep->H = c_OR(c_NOT(when), val);
 	ep->L = c_OR(c_NOT(when), c_NOT(val));
@@ -3274,7 +3324,7 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	    c_NEQ(okA,c_ONE) )
 	{
 	    FP(warning_fp, "Warning: Antecedent failure at time %d", from);
-	    FP(warning_fp, " on node %s\n", idx2name(nd_idx));
+	    FP(warning_fp, " on node %s\n", idx2node_name(nd_idx));
 	    FP(warning_fp, "  The OK_A value is:");
 	    c_Print(warning_fp, okA, -1);
 	    FP(warning_fp, "\n");
@@ -3288,7 +3338,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	ep = new_rec(event_rec_mgrp);
 	ep->event_id = event_id;
 	ep->type = end_ant;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = to;
 	ep->H = c_ONE;
 	ep->L = c_ONE;
@@ -3299,8 +3350,9 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	gbv when, val;
 	string node;
 	int from, to;
-	extract_five_tuple(t, &when, &node, &val, &from, &to);
-	int nd_idx = name2idx(node);
+        extract_five_tuple(t, &when, &node, &val, &from, &to);
+        int nd_idx = name2node_idx(node);      
+        int bit_idx = name2idx(node);      
 	if(nd_idx < 0) {
 	    Fail_pr("Cannot find node %s in consequent\n", node);
 	    longjmp(event_jmp_env, 1);
@@ -3309,7 +3361,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	int event_id = event_id_cnt++;
 	ep->event_id = event_id;
 	ep->type = start_cons;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = from;
 	ep->H = c_OR(c_NOT(when), val);
 	ep->L = c_OR(c_NOT(when), c_NOT(val));
@@ -3319,7 +3372,7 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	    c_NEQ(okC,c_ONE) )
 	{
 	    FP(warning_fp, "Warning: Consequent failure at time %d", from);
-	    FP(warning_fp, " on node %s\n", idx2name(nd_idx));
+	    FP(warning_fp, " on node %s\n", idx2node_name(nd_idx));
 	    FP(warning_fp, "  The OK_C value is:");
 	    c_Print(warning_fp, okC, -1);
 	    FP(warning_fp, "\n");
@@ -3333,7 +3386,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	ep = new_rec(event_rec_mgrp);
 	ep->event_id = event_id;
 	ep->type = end_cons;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = to;
 	ep->H = c_ONE;
 	ep->L = c_ONE;
@@ -3344,7 +3398,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	string node;
 	int from, to;
 	extract_tripple(t, &node, &from, &to);
-	int nd_idx = name2idx(node);
+        int nd_idx = name2node_idx(node);      
+        int bit_idx = name2idx(node);      
 	if(nd_idx < 0) {
 	    Fail_pr("Cannot find node %s in trace list\n", node);
 	    longjmp(event_jmp_env, 1);
@@ -3353,7 +3408,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	int event_id = event_id_cnt++;
 	ep->event_id = event_id;
 	ep->type = start_trace;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = from;
 	ep->H = c_ZERO;	// Don't care
 	ep->L = c_ZERO;	// Don't care
@@ -3361,7 +3417,8 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
 	ep = new_rec(event_rec_mgrp);
 	ep->event_id = event_id;
 	ep->type = end_trace;
-	ep->nd_idx = nd_idx;
+        ep->nd_idx = nd_idx;
+        ep->bit_idx = bit_idx;      
 	ep->time = to;
 	ep->H = c_ZERO;
 	ep->L = c_ZERO;
@@ -3373,6 +3430,7 @@ create_event_buffer(ste_ptr ste, buffer *ebufp,
     return TRUE;
 }
 
+/* TODO: make this word level, also make the creation word level */
 static void
 process_event(buffer *event_bufp, int time)
 {
@@ -3386,17 +3444,20 @@ process_event(buffer *event_bufp, int time)
 	if( ep->time > time ) {
 	    done = TRUE;
 	} else {
-	    int idx = ep->nd_idx;
-	    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, idx);
+          int nd_idx = ep->nd_idx;
+          int bit_idx = ep->bit_idx;
+	    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd_idx);
 	    np->has_ant_or_weak_change = FALSE;
 	    if( ep->type == start_trace ) {
 		np->has_trace = TRUE;
-		gbv H = *(cur_buf + 2*idx);
-		gbv L = *(cur_buf + 2*idx + 1);
-		record_trace(idx, time, H, L);
+		gbv H = *(cur_buf + 2*bit_idx);
+                gbv L = *(cur_buf + 2 * bit_idx + 1);              
+		record_trace(np->idx,bit_idx, time, H, L);
 	    } else if( ep->type == end_trace ) {
-		np->has_trace = FALSE;
-		record_trace(idx, time, c_ONE, c_ONE);
+              np->has_trace = FALSE;
+              // FOREACH_NODE(i, np->vec->map->ilist) {record_trace(np->idx, i,
+              // time, c_ONE, c_ONE);}
+              record_trace(np->idx, bit_idx, time, c_ONE, c_ONE);
 	    } else {
 		gbv *buf;
 		event_list_ptr	cur_active = NULL;
@@ -3461,9 +3522,9 @@ process_event(buffer *event_bufp, int time)
 		    H = c_AND(H, cur_active->ep->H);
 		    L = c_AND(L, cur_active->ep->L);
 		    cur_active = cur_active->next;
-		}
-		*(buf + 2*idx)   = H;
-		*(buf + 2*idx+1) = L;
+                }
+		*(buf + 2 * bit_idx)   = H;
+		*(buf + 2 * bit_idx + 1) = L;
 	    }
 	    pop_buf(event_bufp, NULL);
 	}
@@ -3471,7 +3532,7 @@ process_event(buffer *event_bufp, int time)
 }
 
 static void
-record_trace(int idx, int time, gbv H, gbv L)
+record_trace(int node_idx, int idx, int time, gbv H, gbv L)
 {
     trace_ptr tp = (trace_ptr) find_hash(trace_tblp, INT2PTR(idx));
     if( tp == NULL ) {
@@ -3484,8 +3545,9 @@ record_trace(int idx, int time, gbv H, gbv L)
     if( tp->events && c_EQ(tp->events->H, H) && c_EQ(tp->events->L, L) ) {
 	return;
     }
-    if( RCverbose_ste_run ) {
-	FP(sim_fp, "Node %s {%d} at time %d changes to: ", idx2name(idx),
+    if (RCverbose_ste_run) {
+      	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, node_idx);
+      FP(sim_fp, "Node %s {%d} at time %d changes to: ", idx2name(node_idx, idx-np->vec->map->ilist->from),
 		   idx, time);
 	cHL_Print(sim_fp, H, L);
 	FP(sim_fp, "\n");
@@ -3617,6 +3679,7 @@ push_fsm_env(fsm_ptr fsm)
     old_all_name_tblp = all_name_tblp;
     old_vec_info_rec_mgrp = vec_info_rec_mgrp;
     old_ilist_rec_mgrp = ilist_rec_mgrp;
+    old_nlist_rec_mgrp = nlist_rec_mgrp;  
     old_idx_list_rec_mgrp = idx_list_rec_mgrp;
     old_vec_rec_mgrp = vec_rec_mgrp;
     old_range_rec_mgrp = range_rec_mgrp;
@@ -3632,6 +3695,7 @@ push_fsm_env(fsm_ptr fsm)
     all_name_tblp = &(fsm->all_name_tbl);
     vec_info_rec_mgrp = &(fsm->vec_info_rec_mgr);
     ilist_rec_mgrp = &(fsm->ilist_rec_mgr);
+    nlist_rec_mgrp = &(fsm->nlist_rec_mgr);  
     idx_list_rec_mgrp = &(fsm->idx_list_rec_mgr);
     vec_rec_mgrp = &(fsm->vec_rec_mgr);
     range_rec_mgrp = &(fsm->range_rec_mgr);
@@ -3652,6 +3716,7 @@ pop_fsm_env()
     all_name_tblp = old_all_name_tblp;
     vec_info_rec_mgrp = old_vec_info_rec_mgrp;
     ilist_rec_mgrp = old_ilist_rec_mgrp;
+    nlist_rec_mgrp = old_nlist_rec_mgrp;  
     idx_list_rec_mgrp = old_idx_list_rec_mgrp;
     vec_rec_mgrp = old_vec_rec_mgrp;
     range_rec_mgrp = old_range_rec_mgrp;
@@ -3737,8 +3802,9 @@ mark_ste_fn(pointer p)
     gbv_mark(ste->assertion_OK);
     gbv_mark(ste->check_OK);
     scan_hash(&(ste->trace_tbl), mark_trace_entries);
-    if( ste->active ) {
-	int nds  = COUNT_BUF(&(ste->fsm->nodes));
+    if (ste->active) {
+      //	int nds  = COUNT_BUF(&(ste->fsm->nodes));
+      int nds = ste->fsm->bit_cnt;
 	for(int i = 0; i < nds; i++) {
 	    gbv_mark(*(weak_buf+2*i));
 	    gbv_mark(*(weak_buf+2*i+1));
@@ -3992,8 +4058,26 @@ print_nodes(odests fp, fsm_ptr fsm)
 {
     nnode_ptr np;
     FOR_BUF(&(fsm->nodes), nnode_rec, np) {
-	int start = np->vec->map->from;
-	string nname = get_real_name(np->vec, np->idx-start);
+	int start = np->vec->map->ilist->from;
+	string nname = get_real_name(np->vec, 0);
+	FP(fp, "  %d %s composite:%d fanouts: [",
+		      np->idx, nname, np->composite);
+	char sep = ' ';
+	for(idx_list_ptr ip = np->fanouts; ip != NULL; ip = ip->next) {
+	    FP(fp, "%c %d", sep, ip->idx);
+	    sep = ',';
+	}
+	FP(fp, "]\n");
+    }
+}
+
+static void
+dbg_print_nodes(odests fp)
+{
+    nnode_ptr np;
+    FOR_BUF(nodesp, nnode_rec, np) {
+	int start = np->vec->map->ilist->from;
+	string nname = get_real_name(np->vec, 0);
 	FP(fp, "  %d %s composite:%d fanouts: [",
 		      np->idx, nname, np->composite);
 	char sep = ' ';
@@ -4014,8 +4098,9 @@ print_composites(odests fp)
 	FP(fp, " %3d %10s sz:%d rank:%d pdel:%d ",
 		cnt++, op2str(cp),cp->size,cp->rank,cp->phase_delay);
 	FP(fp, "inps: ");
-	char *sep = strtemp("[");
-	for(ilist_ptr ip = cp->inps; ip != NULL; ip = ip->next) {
+        char *sep = strtemp("[");
+        for (nlist_ptr np = cp->inps; np != NULL; np = np->next) {
+          ilist_ptr ip = np->ilist;
 	    if( ip->size == 1 ) {
 		FP(fp, "%s%d", sep, ip->from);
 	    } else {
@@ -4025,8 +4110,9 @@ print_composites(odests fp)
 	}
 	if( cp->inps != NULL ) FP(fp, "] ");
 	FP(fp, "outs: ");
-	strtemp("[");
-	for(ilist_ptr ip = cp->outs; ip != NULL; ip = ip->next) {
+        strtemp("[");
+        for (nlist_ptr np = cp->outs; np != NULL; np = np->next) {
+          ilist_ptr ip = np->ilist;  
 	    if( ip->size == 1 ) {
 		FP(fp, "%s%d", sep, ip->from);
 	    } else {
@@ -4189,6 +4275,7 @@ fsm2str_fn(pointer p)
 }
 
 
+/* NOTE: the iterator was changed to a different behavior */
 static string
 compute_sha256_signature(fsm_ptr fsm)
 {
@@ -4197,11 +4284,11 @@ compute_sha256_signature(fsm_ptr fsm)
     // Include all information about the nodes
     nnode_ptr np;
     FOR_BUF(&(fsm->nodes), nnode_rec, np) {
-	int start = np->vec->map->from;
+	int start = np->vec->map->ilist->from;
 	vec_info_ptr vp = np->vec;
-	SHA256_printf(sha, "  %d %s %s %d composite:%d fanouts: [",
+	SHA256_printf(sha, "  %d %s %s composite:%d fanouts: [",
 			np->idx, vp->hierarchy, vp->local_name,
-			np->idx-start+1, np->composite);
+			np->composite);
 	char sep = ' ';
 	for(idx_list_ptr ip = np->fanouts; ip != NULL; ip = ip->next) {
 	    SHA256_printf(sha, "%c %d", sep, ip->idx);
@@ -4217,7 +4304,8 @@ compute_sha256_signature(fsm_ptr fsm)
                 cnt++, op2str(cp),cp->size,cp->rank,cp->phase_delay);
         SHA256_printf(sha, "inps: ");
         char *sep = strtemp("[");
-        for(ilist_ptr ip = cp->inps; ip != NULL; ip = ip->next) {
+        for (nlist_ptr np = cp->inps; np != NULL; np = np->next) {
+            ilist_ptr ip = np->ilist;
             if( ip->size == 1 ) {
                 SHA256_printf(sha, "%s%d", sep, ip->from);
             } else {
@@ -4227,8 +4315,9 @@ compute_sha256_signature(fsm_ptr fsm)
         }
         if( cp->inps != NULL ) SHA256_printf(sha, "] ");
         SHA256_printf(sha, "outs: ");
-        strtemp("["); 
-        for(ilist_ptr ip = cp->outs; ip != NULL; ip = ip->next) {
+        strtemp("[");
+        for (nlist_ptr np = cp->outs; np != NULL; np = np->next) {
+                      ilist_ptr ip = np->ilist;
             if( ip->size == 1 ) {
                 SHA256_printf(sha, "%s%d", sep, ip->from);
             } else {
@@ -4336,11 +4425,23 @@ ilist_copy(ilist_ptr ip)
     return copy;
 }
 
-static ilist_ptr
+//FIXME: is this the correct deep copy?j
+static nlist_ptr nlist_copy(nlist_ptr np) {
+    //ASSERT(0);
+    if (np == NULL)
+      return NULL;
+    nlist_ptr copy = (nlist_ptr)new_rec(nlist_rec_mgrp);
+    copy->ilist = np->ilist;
+    copy->node_idx = np->node_idx;
+    copy->next = nlist_copy(np->next);
+    return copy;
+}
+
+static nlist_ptr
 make_input_arg(g_ptr we, int sz, hash_record *vtblp, string hier, bool pdel)
 {
     string base;
-    ilist_ptr inps;
+    nlist_ptr inps;
     if( is_W_VAR(we, &sz, &base) ) {
 	string vname = mk_vec_name(base, sz);
 	inps = map_vector(vtblp, hier, vname, FALSE);
@@ -4356,7 +4457,7 @@ make_input_arg(g_ptr we, int sz, hash_record *vtblp, string hier, bool pdel)
 	    return NULL;
 	}
     }
-    return( ilist_copy(inps) );
+    return( nlist_copy(inps) );
 }
 
 static idx_list_ptr
@@ -4391,16 +4492,16 @@ add_fanout(nnode_ptr np, int comp_idx)
 }
 
 static void
-add_fanouts(ilist_ptr inps, int comp_idx)
+add_fanouts(nlist_ptr inps, int comp_idx)
 {
-    FOREACH_NODE(nd, inps) {
-	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+    FOREACH_NNODE(nd, inps) {
+	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
 	add_fanout(np, comp_idx);
     }
 }
 
 static bool
-compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
+compile_expr(hash_record *vtblp, string hier, nlist_ptr outs, g_ptr we,
 	     bool pdel)
 {
     arbi_T value;
@@ -4411,22 +4512,24 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     g_ptr b, l, r;
     g_ptr cond;
     int comp_idx = COUNT_BUF(compositesp);
+//    FP(stdout_fp, "composite index: %d\n", comp_idx);
     int osz = 0;
-    FOREACH_NODE(nd, outs) {
-	osz++;
-	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
-	np->composite = comp_idx;
+    FOREACH_NNODE(nptr, outs) {
+	osz += compute_nlist_length(nptr);
+	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nptr->node_idx);
+        np->composite = comp_idx;
     }
     ncomp_rec cr;
     cr.rank = 0;
     cr.flag = 0;
     cr.phase_delay = pdel;
     cr.outs = outs;
+//    ASSERT(outs->node_idx <= COUNT_BUF(nodesp));
     if( is_W_VAR(we, &sz, &base) ) {
 	cr.op = op_WIRE;
 	cr.size = sz;
 	string vname = mk_vec_name(base, sz);
-	ilist_ptr inps = map_vector(vtblp, hier, vname, FALSE);
+	nlist_ptr inps = {map_vector(vtblp, hier, vname, FALSE)};
 	cr.inps = inps;
 	add_fanouts(inps, comp_idx);
 	push_buf(compositesp, (pointer) &cr);
@@ -4435,7 +4538,7 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     if( is_W_EXPLICIT_VAR(we, &sz, &name) ) {
 	cr.op = op_WIRE;
 	cr.size = sz;
-	ilist_ptr inps = map_vector(vtblp, hier, name, FALSE);
+	nlist_ptr inps = {map_vector(vtblp, hier, name, FALSE)};
 	cr.inps = inps;
 	add_fanouts(inps, comp_idx);
 	push_buf(compositesp, (pointer) &cr);
@@ -4459,13 +4562,13 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     }
     if( is_binary_wexpr(we, &op, &l, &r) ) {
 	cr.op = op;
-	int sz = compute_ilist_length(outs);
+	int sz = compute_nlist_length(outs);
 	cr.size = sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr linps = make_input_arg(l, sz, vtblp, hier, FALSE);
-	ilist_ptr rinps = make_input_arg(r, sz, vtblp, hier, FALSE);
-	ilist_ptr inps = linps;
+	nlist_ptr linps = make_input_arg(l, sz, vtblp, hier, FALSE);
+	nlist_ptr rinps = make_input_arg(r, sz, vtblp, hier, FALSE);
+	nlist_ptr inps = linps;
 	if( linps == NULL ) {
 	    inps = linps = rinps;
 	} else {
@@ -4485,9 +4588,9 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	cr.arg.extension_size = inp_sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr linps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
-	ilist_ptr rinps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
-	ilist_ptr inps = linps;
+	nlist_ptr linps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
+	nlist_ptr rinps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
+	nlist_ptr inps = linps;
 	if( linps == NULL ) {
 	    inps = linps = rinps;
 	} else {
@@ -4501,11 +4604,11 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     }
     if( is_W_NOT(we, &l) ) {
 	cr.op = op_NOT;
-	int sz = compute_ilist_length(outs);
+	int sz = compute_nlist_length(outs);
 	cr.size = sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr inps = make_input_arg(l, sz, vtblp, hier, FALSE);
+	nlist_ptr inps = make_input_arg(l, sz, vtblp, hier, FALSE);
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, comp_idx);
 	cp->inps = inps;
 	add_fanouts(inps, comp_idx);
@@ -4524,7 +4627,7 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	cr.arg.extension_size = inp_sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr inps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
+	nlist_ptr inps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, comp_idx);
 	cp->inps = inps;
 	add_fanouts(inps, comp_idx);
@@ -4537,7 +4640,7 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	cr.arg.extension_size = inp_sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr inps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
+	nlist_ptr inps = make_input_arg(l, inp_sz, vtblp, hier, FALSE);
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, comp_idx);
 	cp->inps = inps;
 	add_fanouts(inps, comp_idx);
@@ -4545,14 +4648,14 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     }
     if( is_W_ITE(we, &cond, &l, &r) ) {
 	cr.op = op_ITE;
-	int sz = compute_ilist_length(outs);
+	int sz = compute_nlist_length(outs);
 	cr.size = sz;
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr cinps = make_input_arg(cond, 1, vtblp, hier, FALSE);
-	ilist_ptr linps = make_input_arg(l, sz, vtblp, hier, FALSE);
-	ilist_ptr rinps = make_input_arg(r, sz, vtblp, hier, FALSE);
-	ilist_ptr inps = cinps;
+	nlist_ptr cinps = make_input_arg(cond, 1, vtblp, hier, FALSE);
+	nlist_ptr linps = make_input_arg(l, sz, vtblp, hier, FALSE);
+	nlist_ptr rinps = make_input_arg(r, sz, vtblp, hier, FALSE);
+	nlist_ptr inps = cinps;
 	while(cinps->next != NULL) { cinps = cinps->next; }
 	cinps->next = linps;
 	while(cinps->next != NULL) { cinps = cinps->next; }
@@ -4564,7 +4667,7 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     }
     if( is_W_SLICE(we, &l, &r) || is_W_NAMED_SLICE(we, &name, &l, &r) ) {
 	cr.op = op_SLICE;
-	int sz = compute_ilist_length(outs);
+	int sz = compute_nlist_length(outs);
 	int sel_sz = 0;
 	for(g_ptr cur = l; !IS_NIL(cur); cur = GET_CONS_TL(cur)) {
             sel_sz++;
@@ -4585,12 +4688,12 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
 	int inp_sz = get_wexpr_size(r);
-	ilist_ptr inps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
+	nlist_ptr inps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
 	ncomp_ptr cp = (ncomp_ptr) M_LOCATE_BUF(compositesp, comp_idx);
 	cp->inps = inps;
-	if( inp_sz != compute_ilist_length(inps) ) {
+	if( inp_sz != compute_nlist_length(inps) ) {
 	    FP(err_fp, "Slice operation has inconsistent input size (%d!=%d)\n",
-		    inp_sz, compute_ilist_length(inps));
+		    inp_sz, compute_nlist_length(inps));
 	    report_source_locations(err_fp);
 	    Rprintf("");
 	}
@@ -4612,7 +4715,7 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
     }
     if( is_W_UPDATE_NAMED_SLICE(we, &b, &name, &l, &r) ) {
 	cr.op = op_UPDATE_SLICE;
-	int osz = compute_ilist_length(outs);
+	int osz = compute_nlist_length(outs);
 	int sel_sz = 0;
 	for(g_ptr cur = l; !IS_NIL(cur); cur = GET_CONS_TL(cur)) {
             sel_sz++;
@@ -4634,9 +4737,9 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	// Must push the incomplete record on its correct place!
 	cr.size = osz;
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr linps = make_input_arg(b, osz, vtblp, hier, FALSE);
-	ilist_ptr rinps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
-        ilist_ptr inps = linps;
+	nlist_ptr linps = make_input_arg(b, osz, vtblp, hier, FALSE);
+	nlist_ptr rinps = make_input_arg(r, inp_sz, vtblp, hier, FALSE);
+        nlist_ptr inps = linps;
         if( linps == NULL ) {
             inps = linps = rinps;
         } else {
@@ -4667,12 +4770,12 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	// Must push the incomplete record on its correct place!
 	push_buf(compositesp, (pointer) &cr);
 	//
-	ilist_ptr inps = NULL;
-	ilist_ptr cur = inps;
+	nlist_ptr inps = NULL;
+	nlist_ptr cur = inps;
 	while( !IS_NIL(l) ) {
 	    g_ptr e = GET_CONS_HD(l);
 	    int sz = get_wexpr_size(e);
-	    ilist_ptr tmp = make_input_arg(e, sz, vtblp, hier, FALSE);
+	    nlist_ptr tmp = make_input_arg(e, sz, vtblp, hier, FALSE);
 	    if( cur == NULL ) {
 		inps = tmp;
 		cur = inps;
@@ -4696,8 +4799,8 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	cr.arg.mem.lines = lines;
 	cr.arg.mem.data_size = d_sz;
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr inps = make_input_arg(addr, a_sz, vtblp, hier, FALSE);
-	ilist_ptr cur = inps;
+	nlist_ptr inps = make_input_arg(addr, a_sz, vtblp, hier, FALSE);
+	nlist_ptr cur = inps;
 	while( cur->next != NULL ) cur = cur->next;
 	int mem_sz = lines * d_sz;
 	cur->next = make_input_arg(mem, mem_sz, vtblp, hier, FALSE);
@@ -4715,8 +4818,8 @@ compile_expr(hash_record *vtblp, string hier, ilist_ptr outs, g_ptr we,
 	cr.arg.mem.lines = lines;
 	cr.arg.mem.data_size = d_sz;
 	push_buf(compositesp, (pointer) &cr);
-	ilist_ptr inps = make_input_arg(addr, a_sz, vtblp, hier, FALSE);
-	ilist_ptr cur = inps;
+	nlist_ptr inps = make_input_arg(addr, a_sz, vtblp, hier, FALSE);
+	nlist_ptr cur = inps;
 	while( cur->next != NULL ) cur = cur->next;
 	cur->next = make_input_arg(data, d_sz, vtblp, hier, FALSE);
 	while( cur->next != NULL ) cur = cur->next;
@@ -4740,7 +4843,7 @@ mk_vec_name(string base, int sz)
 }
 
 
-static ilist_ptr
+static nlist_ptr
 get_lhs_indices(hash_record *vtblp, string hier, g_ptr e)
 {
     int sz;
@@ -4749,30 +4852,31 @@ get_lhs_indices(hash_record *vtblp, string hier, g_ptr e)
     if( is_W_VAR(e, &sz, &base) ) {
 	// Variable
 	string vname = mk_vec_name(base, sz);
-	ilist_ptr res = map_vector(vtblp, hier, vname, FALSE);
+	nlist_ptr res = map_vector(vtblp, hier, vname, FALSE);
 	return res;
     } else if( is_W_EXPLICIT_VAR(e, &sz, &base) ) {
 	// Variable
-	ilist_ptr res = map_vector(vtblp, hier, base, FALSE);
+	nlist_ptr res = map_vector(vtblp, hier, base, FALSE);
 	return res;
     } else if( is_W_SLICE(e, &idx_list, &sub_expr) ||
 	       is_W_NAMED_SLICE(e, &base, &idx_list, &sub_expr) ) {
 	// Slice
-	ilist_ptr vlist = get_lhs_indices(vtblp, hier, sub_expr);
-	int len = compute_ilist_length(vlist);
-	ilist_ptr res = NULL;
+	nlist_ptr vlist = get_lhs_indices(vtblp, hier, sub_expr);
+	int len = compute_nlist_length(vlist);
+	nlist_ptr res = NULL; 
 	for(g_ptr cur = idx_list; !IS_NIL(cur); cur = GET_CONS_TL(cur)) {
 	    int idx = GET_INT(GET_CONS_HD(cur));
-	    int loc = len-idx-1;
-	    ilist_ptr tmp = translate_range(vlist, loc, loc);
-	    res = ilist_append(res, tmp);
+            int loc = len - idx - 1;
+          //THE ROOT OF ALL EVIL
+	  nlist_ptr tmp =  translate_range(vlist->ilist, loc, loc);
+	    res = nlist_append(res, tmp);
 	}
 	return res;
     } else if( is_W_CAT(e, &cat_list) ) {
-	ilist_ptr res = NULL;
+	nlist_ptr res = NULL;
 	for(g_ptr cur = cat_list; !IS_NIL(cur); cur = GET_CONS_TL(cur)) {
-	    ilist_ptr tmp = get_lhs_indices(vtblp, hier, GET_CONS_HD(cur));
-	    res = ilist_append(res, tmp);
+	    nlist_ptr tmp = get_lhs_indices(vtblp, hier, GET_CONS_HD(cur));
+	    res = nlist_append(res, tmp);
 	}
 	return res;
     } else {
@@ -4804,12 +4908,14 @@ report_source_locations(odests dfp)
     }
 }
 
-static ilist_ptr
+static nlist_ptr
 declare_vector(hash_record *vtblp, string hier, string name,
-		bool transient, ilist_ptr act_map, string value_list)
+		bool transient, nlist_ptr act_map, string value_list)
 {
     vec_info_ptr ip;
-    ip = (vec_info_ptr) new_rec(vec_info_rec_mgrp);
+    ip = (vec_info_ptr)new_rec(vec_info_rec_mgrp);
+    nlist_ptr nmap;
+    nmap = (nlist_ptr)new_rec(nlist_rec_mgrp);
     ip->next = NULL;
     ip->value_list = value_list;
     ip->transient = transient;
@@ -4821,42 +4927,48 @@ declare_vector(hash_record *vtblp, string hier, string name,
     ip->hierarchy = wastrsave(&strings, hier);
     int sz = vec_size(vp);
     ip->size = sz;
+
     if( transient ) {
-	int asz = compute_ilist_length(act_map);
+	int asz = compute_nlist_length(act_map);
 	if( sz != asz ) {
 	    FP(err_fp,"\nLength mismatch between %s%s and ", hier, name);
-	    base_print_ilist(act_map);
+	    base_print_ilist(act_map->ilist);
 	    FP(err_fp," (%d!=%d)\n", sz, asz);
 	    report_source_locations(err_fp);
 	    Rprintf("");
 	}
-	ip->map = act_map;
+	nmap = act_map;
     } else {
-	ilist_ptr map = (ilist_ptr) new_rec(ilist_rec_mgrp);
-	int vector_cnt = COUNT_BUF(nodesp);
-	map->from = vector_cnt;
-	map->to = vector_cnt+sz-1;
+      int vector_cnt = COUNT_BUF(nodesp);      
+      ilist_ptr map = (ilist_ptr)new_rec(ilist_rec_mgrp);
+      nmap->ilist = map;
+      nmap->next = NULL;
+      nmap->node_idx = vector_cnt;
+
+      map->from = fsm_inode_cnt;
+      map->to = fsm_inode_cnt + sz - 1;
+      map->node_idx = vector_cnt;
+        fsm_inode_cnt += sz;
 	map->next = NULL;
-	map->size = sz;
-	ip->map = map;
-	for(int i = 0; i < sz; i++) {
-	    nnode_rec nr;
-	    nr.vec = ip;
-	    nr.idx = vector_cnt;
-	    nr.has_phase_event = FALSE;
-	    nr.has_weak = FALSE;
-	    nr.has_ant = FALSE;
-	    nr.has_cons = FALSE;
-	    nr.has_trace = FALSE;
-	    nr.is_top_input = FALSE;
-	    nr.is_top_output = FALSE;
-	    vector_cnt++;
-	    nr.composite = -1;
-	    nr.fanouts = NULL;
-	    nr.draw_info = NULL;
-	    push_buf(nodesp, (pointer) &nr);
-	}
+        map->size = sz;
+      
+        ip->map = nmap;
+	nnode_rec nr;
+        nr.vec = ip;
+	nr.idx = vector_cnt;
+	nr.has_phase_event = FALSE;
+	nr.has_weak = FALSE;
+	nr.has_ant = FALSE;
+	nr.has_cons = FALSE;
+	nr.has_trace = FALSE;
+	nr.is_top_input = FALSE;
+	nr.is_top_output = FALSE;
+	nr.composite = -1;
+	nr.fanouts = NULL;
+	nr.draw_info = NULL;
+	push_buf(nodesp, (pointer) &nr);
     }
+    ip->map = nmap;  
     vec_info_ptr oip = (vec_info_ptr) find_hash(vtblp, sig);
     if( oip == NULL ) {
 	insert_hash(vtblp, sig, ip);
@@ -4911,11 +5023,16 @@ find_node_index(vec_ptr decl, vec_ptr vp, int start)
 }
 
 static string
-idx2name(int idx)
+idx2name(int node_idx, int idx)
 {
+    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, node_idx);
+    string nname = get_real_name(np->vec, idx);
+    return nname;
+}
+
+static string idx2node_name(int idx) {
     nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, idx);
-    int start = np->vec->map->from;
-    string nname = get_real_name(np->vec, np->idx-start);
+    string nname = get_real_name(np->vec, 0);
     return nname;
 }
 
@@ -4960,18 +5077,25 @@ vec2indices(string name)
 	dp = dp->next;
 	//
 	if( is_full_range(dp, vp) ) {
-	    return( ilist_copy(ip->map) );
+	    return( ilist_copy(ip->map->ilist) );
 	}
 	idx_map_result = NULL;
 	im_cur = NULL;
 	if( setjmp(node_map_jmp_env) == 0 ) {
 	    map_node(dp, vp, ip->map, 0);
-	    return( idx_map_result );
+	    return( idx_map_result->ilist );
 	} 
 	ip = ip->next;
     }
     Fail_pr("Cannot find vector %s", name);
     return NULL;
+}
+
+static int name2node_idx(string name) {
+  vec_ptr vp = split_vector_name(vec_rec_mgrp, range_rec_mgrp, name);
+    string sig = get_vector_signature(vp);
+    vec_info_ptr ip = (vec_info_ptr)find_hash(all_name_tblp, sig);
+    return ip->map->node_idx;  
 }
 
 static int
@@ -4981,7 +5105,7 @@ name2idx(string name)
     string sig = get_vector_signature(vp);
     vec_info_ptr ip = (vec_info_ptr) find_hash(all_name_tblp, sig);
     while( ip != NULL ) {
-	int res = find_node_index(ip->declaration, vp, ip->map->from);
+	int res = find_node_index(ip->declaration, vp, ip->map->ilist->from);
 	if( res >= 0 ) return res;
 	ip = ip->next;
     }
@@ -4989,10 +5113,11 @@ name2idx(string name)
     return -1;
 }
 
-static ilist_ptr
+static nlist_ptr
 map_vector(hash_record *vtblp, string hier, string name, bool ignore_missing)
 {
-    if( strncmp("0b", name, 2) == 0 ) {
+  if (strncmp("0b", name, 2) == 0) {
+    nlist_ptr np = (nlist_ptr)new_rec(nlist_rec_mgrp);
         // A constant
         ilist_ptr res = NULL;
         for(string s = name+strlen(name)-1; s >= name+2; s--) {
@@ -5008,7 +5133,8 @@ map_vector(hash_record *vtblp, string hier, string name, bool ignore_missing)
             }
             res = ip;
         }
-        return res;
+	np->ilist = res;
+        return np;
     }
     vec_ptr vp = split_vector_name(vec_rec_mgrp,range_rec_mgrp, name);
     string sig = get_vector_signature(vp);
@@ -5042,7 +5168,7 @@ map_vector(hash_record *vtblp, string hier, string name, bool ignore_missing)
         vec_ptr dp = ip->declaration;
         idx_map_result = NULL;
         if( is_full_range(dp, vp) ) {
-            ilist_ptr res = ilist_copy(ip->map);
+            nlist_ptr res = nlist_copy(ip->map);
             return( res );
         }
         im_cur = NULL;
@@ -5058,8 +5184,8 @@ map_vector(hash_record *vtblp, string hier, string name, bool ignore_missing)
     new_mgr(&vec_list_rec_mgr, sizeof(vec_list_rec));
     vec_list_ptr vl = Expand_vector(&vec_list_rec_mgr,
 				    vec_rec_mgrp, range_rec_mgrp, vp);
-    ilist_ptr final_idx_map_result = NULL;
-    ilist_ptr *next_list = &final_idx_map_result; 
+    nlist_ptr final_idx_map_result = NULL;
+    nlist_ptr *next_list = &final_idx_map_result; 
 
     while( vl != NULL ) {
 	vec_ptr vp = vl->vec;
@@ -5068,7 +5194,7 @@ map_vector(hash_record *vtblp, string hier, string name, bool ignore_missing)
 	while( ip != NULL && idx_map_result == NULL ) {
 	    vec_ptr dp = ip->declaration;
 	    if( is_full_range(dp, vp) ) {
-		idx_map_result = ilist_copy(ip->map);
+		idx_map_result = nlist_copy(ip->map);
 	    } else {
 		im_cur = NULL;
 		if( setjmp(node_map_jmp_env) == 0 ) {
@@ -5193,9 +5319,8 @@ is_full_range(vec_ptr v1, vec_ptr v2)
     goto full_range_restart;
 }
 
-static int
-ilist_sel(ilist_ptr ip, int idx)
-{
+static int ilist_sel(ilist_ptr ip, int idx) {
+  ASSERT(compute_ilist_length(ip) > idx);
     while( ip->size <= idx ) {
 	idx -= ip->size;
 	ip = ip->next;
@@ -5207,8 +5332,26 @@ ilist_sel(ilist_ptr ip, int idx)
     }
 }
 
+static int nlist_sel(nlist_ptr np, int idx) {
+  ASSERT(compute_nlist_length(np) > idx);
+  while (compute_ilist_length(np->ilist) <= idx) {
+    idx -= compute_ilist_length(np->ilist);
+    np = np->next;
+  }
+  return ilist_sel(np->ilist, idx);
+}
+
+static int nlist_sel_get_idx(nlist_ptr np, int idx) {
+  ASSERT(compute_nlist_length(np) > idx);
+  while (compute_ilist_length(np->ilist) <= idx) {
+    idx -= compute_ilist_length(np->ilist);
+    np = np->next;
+  }
+  return np->node_idx;
+}
+
 static void
-map_node(vec_ptr decl, vec_ptr ivec, ilist_ptr map, int cur)
+map_node(vec_ptr decl, vec_ptr ivec, nlist_ptr map, int cur)
 {
     vec_ptr vec = ivec;
     while( vec != NULL && vec->type == TXT ) {
@@ -5218,15 +5361,22 @@ map_node(vec_ptr decl, vec_ptr ivec, ilist_ptr map, int cur)
 	decl = decl->next;
     }
     if( vec == NULL ) {
-	ASSERT(decl == NULL);
-	int rcur = ilist_sel(map, cur);
+      ASSERT(decl == NULL);
+      //TODO: what is really going on in this branch?
+      int rcur = nlist_sel(map, cur);
+      int rcur_nd_idx = nlist_sel_get_idx(map, cur);
 	if( idx_map_result == NULL ) {
-	    idx_map_result = (ilist_ptr) new_rec(ilist_rec_mgrp);
-	    im_cur = idx_map_result;
+          idx_map_result = (nlist_ptr)new_rec(nlist_rec_mgrp);
+          idx_map_result->next = NULL;
+          // FIXME: verify that this is correct
+          idx_map_result->node_idx = rcur_nd_idx;
+          idx_map_result->ilist = (ilist_ptr)new_rec(ilist_rec_mgrp);
+	    im_cur = idx_map_result->ilist;
 	    im_cur->next = NULL;
 	    im_cur->from = rcur;
 	    im_cur->to = rcur;
-	    im_cur->size = 1;
+            im_cur->size = 1;
+            im_cur->node_idx = rcur_nd_idx;
 	    return;
 	}
 	if( im_cur->from >= im_cur->to && (rcur == (im_cur->to-1)) ) {
@@ -5277,6 +5427,17 @@ compute_ilist_length(ilist_ptr l)
     return sz;
 }
 
+static int
+compute_nlist_length(nlist_ptr l)
+{
+    int sz = 0;
+    while( l != NULL ) {
+      sz = sz + compute_ilist_length(l->ilist);
+	l = l->next;
+    }
+    return sz;
+}
+
 static ilist_ptr
 ilist_append(ilist_ptr l1, ilist_ptr l2)
 {
@@ -5289,15 +5450,26 @@ ilist_append(ilist_ptr l1, ilist_ptr l2)
     return l1;
 }
 
+static nlist_ptr nlist_append(nlist_ptr l1, nlist_ptr l2) {
+    if( l1 == NULL ) return l2;
+    nlist_ptr cur = l1;
+    while( cur->next != NULL ) {
+	cur = cur->next;
+    }
+    cur->next = l2;
+    return l1;  
+}
+
 static ilist_ptr
-append_range(ilist_ptr l, int i_from, int i_to)
+append_range(ilist_ptr l, int nd_idx, int i_from, int i_to)
 {
     if( l == NULL ) {
 	ilist_ptr res = (ilist_ptr) new_rec(ilist_rec_mgrp);
 	res->next = NULL;
 	res->from = i_from;
 	res->to   = i_to;
-	res->size = abs(i_to - i_from) + 1;
+        res->size = abs(i_to - i_from) + 1;
+        res->node_idx = nd_idx; // the default one to assign to
 	return( res );
     }
     ilist_ptr cur = l;
@@ -5330,11 +5502,12 @@ append_range(ilist_ptr l, int i_from, int i_to)
     res->from = i_from;
     res->to   = i_to;
     res->size = abs(i_to - i_from) + 1;
+    res->node_idx = nd_idx;
     cur->next = res;
     return( l );
 }
 
-static ilist_ptr
+static nlist_ptr
 translate_range(ilist_ptr map, int from, int to)
 {
     ASSERT( from <= to );
@@ -5354,11 +5527,17 @@ translate_range(ilist_ptr map, int from, int to)
 	int remain = map->size - abs(start - map->from);
 	if( remain >= size ) {
 	    int end = start + (size-1)*direction;
-	    result = append_range(result, start, end);
-	    return( result );
+            result = append_range(result, map->node_idx, start, end);
+            // FIXME: what's the behavior when a word level node has a couple of
+            // these ranges? Or will that never occur??
+            nlist_ptr np = (nlist_ptr)new_rec(nlist_rec_mgrp);
+            np->next = NULL;
+            np->node_idx = result->node_idx;
+            np->ilist = result;
+	    return( np );
 	}
 	int end = map->to;
-	result = append_range(result, start, end);
+	result = append_range(result, map->node_idx, start, end);
 	int used = abs(end-start)+1;
 	from = from+used;
 	size = size-used;
@@ -5520,13 +5699,18 @@ do_phase(ste_ptr ste)
 	gbv newH, newL;
 	if( idx >3 && np->composite == -1 ) {
 	    // Input
-	    newH = newL = c_ONE;
-	    update_node(ste, idx, newH, newL);
+            newH = newL = c_ONE;
+            FOREACH_NODE(idx, np->vec->map->ilist) {
+                update_node(ste, np->idx, idx, newH, newL);
+        }
 	} else if( np->has_phase_event ) {
 	    np->has_phase_event = FALSE;
-	    newH = *(next_buf+2*idx);
-	    newL = *(next_buf+2*idx+1);
-	    update_node(ste, idx, newH, newL);
+
+            FOREACH_NODE(i, np->vec->map->ilist) {
+          	    newH = *(next_buf+2*i);
+            newL = *(next_buf + 2 * i + 1);
+          update_node(ste, np->idx, i, newH, newL);
+        }
 	}
 	idx++;
     }
@@ -5592,19 +5776,24 @@ do_wl_op(ste_ptr ste, ncomp_ptr op)
 {
     gbv one = c_ONE;
     resize_buf(&inps_buf, 0);
-    FOREACH_NODE(idx, op->inps) {
+    //FIXME: is there a more efficient way to do things
+    FOREACH_NNODE(nptr, op->inps) {
+      FOREACH_NODE(idx, nptr->ilist) {
 	gbv H = *(cur_buf+2*idx);
 	push_buf(&inps_buf, (pointer) &H);
 	gbv L = *(cur_buf+2*idx+1);
 	push_buf(&inps_buf, (pointer) &L);
+      }  
     }
     gbv_inps = START_BUF(&inps_buf);
     //
     resize_buf(&outs_buf, 0);
-    FOREACH_NODE(idx, op->outs) {
+    FOREACH_NNODE(nptr, op->outs) {
+    FOREACH_NODE(idx, nptr->ilist) {
 	push_buf(&outs_buf, (pointer) &one);
 	push_buf(&outs_buf, (pointer) &one);
-    }
+}
+}
     gbv_outs = START_BUF(&outs_buf);
     //
     // Perform the operation
@@ -5625,25 +5814,31 @@ do_wl_op(ste_ptr ste, ncomp_ptr op)
 
     int additional = 0;
     // Now process the outputs (fanouts, phase delays, etc.)
+    // TODO: can we optimize this and move the loop into a single function?
     if( op->phase_delay ) {
-	int i = 0;
-	FOREACH_NODE(idx, op->outs) {
+      int i = 0;
+      FOREACH_NNODE(nptr, op->outs) {
+	FOREACH_NODE(idx, nptr->ilist) {
 	    gbv newH = *(gbv_outs+i); i++;
 	    *(next_buf+2*idx) = newH;
 	    gbv newL = *(gbv_outs+i); i++;
 	    *(next_buf+2*idx+1) = newL;
-	    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, idx);
+	    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nptr->node_idx);
 	    np->has_phase_event = TRUE;
 	    additional++;
-	}
+    }
+    }
     } else {
-	int i = 0;
-	FOREACH_NODE(idx, op->outs) {
+      int i = 0;
+      FOREACH_NNODE(nptr, op->outs) {
+	FOREACH_NODE(idx, nptr->ilist) {      
+
 	    gbv newH = *(gbv_outs+i); i++;
 	    gbv newL = *(gbv_outs+i); i++;
-	    int cnt = update_node(ste, idx, newH, newL);
+	    int cnt = update_node(ste, nptr->node_idx , idx, newH, newL);
 	    additional += cnt;
-	}
+    }
+    }
     }
     if( Do_gc_asap ) Garbage_collect();
     return additional;
@@ -6301,10 +6496,10 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
             }
             push_buf(top_inpsp, &fname);
             string value_list = find_value_list(attrs, fname);
-            ilist_ptr il = declare_vector(&vinfo_tbl, hier, fname,
+            nlist_ptr il = declare_vector(&vinfo_tbl, hier, fname,
                                           FALSE, NULL, value_list);
-            FOREACH_NODE(nd, il) {
-                nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+            FOREACH_NNODE(nd, il) {
+                nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
                 np->is_top_input = TRUE;
             }
         }
@@ -6321,10 +6516,10 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
             }
             push_buf(top_outsp, &fname);
             string value_list = find_value_list(attrs, fname);
-            ilist_ptr il = declare_vector(&vinfo_tbl, hier, fname,
+            nlist_ptr il = declare_vector(&vinfo_tbl, hier, fname,
                                           FALSE, NULL, value_list);
-            FOREACH_NODE(nd, il) {
-                nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+            FOREACH_NNODE(nd, il) {
+                nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
                 np->is_top_output = TRUE;
             }
         }
@@ -6335,10 +6530,10 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
             g_ptr pair = GET_CONS_HD(l);
             string fname = GET_STRING(GET_FST(pair));
             g_ptr acts = GET_SND(pair);
-            ilist_ptr act_list = NULL;
+            nlist_ptr act_list = NULL;
             while( !IS_NIL(acts) ) {
                 string actual = GET_STRING(GET_CONS_HD(acts));
-                ilist_ptr tmp = map_vector(parent_tblp, hier, actual, FALSE);
+                nlist_ptr tmp = map_vector(parent_tblp, hier, actual, FALSE);
                 if( tmp == NULL ) {
                     string phier = strtemp(hier);
                     string last = rindex(phier, '/');
@@ -6348,7 +6543,7 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
                     tmp = declare_vector(&vinfo_tbl, hier, actual,
                                          FALSE, NULL, s_ES);
                 }
-                act_list = ilist_append(act_list, tmp);
+                act_list = nlist_append(act_list, tmp);
                 acts = GET_CONS_TL(acts);
             }
             declare_vector(&vinfo_tbl, hier, fname, TRUE, act_list, s_ES);
@@ -6373,13 +6568,13 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
             g_ptr pair = GET_CONS_HD(l);
             string fname = GET_STRING(GET_FST(pair));
             g_ptr acts = GET_SND(pair);
-            ilist_ptr act_list = NULL;
+            nlist_ptr act_list = NULL;
             while( !IS_NIL(acts) ) {
                 string actual = GET_STRING(GET_CONS_HD(acts));
 #if 0
-                ilist_ptr tmp = map_vector(parent_tblp, hier, actual, TRUE);
+                nlist_ptr tmp = map_vector(parent_tblp, hier, actual, TRUE);
 #else
-                ilist_ptr tmp = map_vector(parent_tblp, hier, actual, FALSE);
+                nlist_ptr tmp = map_vector(parent_tblp, hier, actual, FALSE);
 #endif
                 if( tmp == NULL ) {
                     string phier = strtemp(hier);
@@ -6390,7 +6585,7 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
                     tmp = declare_vector(&vinfo_tbl, hier, actual,
                                          FALSE, NULL, s_ES);
                 }
-                act_list = ilist_append(act_list, tmp);
+                act_list = nlist_append(act_list, tmp);
                 acts = GET_CONS_TL(acts);
             }
             declare_vector(&vinfo_tbl, hier, fname, TRUE, act_list, s_ES);
@@ -6408,8 +6603,8 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
                     while( rp->next != NULL ) rp = rp->next;	
                     rp->next = vio;
                 }
-                FOREACH_NODE(nd, act_list) {
-                    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+                FOREACH_NNODE(nd, act_list) {
+                    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
                     vis_list_ptr vlp = new_rec(vis_list_rec_mgrp);
                     vlp->vp = vp;
                     vlp->next = np->draw_info;
@@ -6469,7 +6664,7 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
                 gen_strappend(sm, "{{");
                 gen_strappend(sm, vlp->f_vec);
                 gen_strappend(sm, "} {");
-                g_ptr nds = ilist2nds(vlp->acts);
+                g_ptr nds = ilist2nds(vlp->acts->ilist);
                 g_ptr avecs = Merge_Vectors(nds, TRUE);
                 for(g_ptr ap = avecs; !IS_NIL(ap); ap = GET_CONS_TL(ap)) {
                     string actual = GET_STRING(GET_CONS_HD(ap));
@@ -6507,7 +6702,7 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
                 gen_strappend(sm, "{{");
                 gen_strappend(sm, vlp->f_vec);
                 gen_strappend(sm, "} {");
-                g_ptr nds = ilist2nds(vlp->acts);
+                g_ptr nds = ilist2nds(vlp->acts->ilist);
                 g_ptr avecs = Merge_Vectors(nds, TRUE);
                 for(g_ptr ap = avecs; !IS_NIL(ap); ap = GET_CONS_TL(ap)) {
                     string actual = GET_STRING(GET_CONS_HD(ap));
@@ -6553,10 +6748,10 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
             g_ptr fn = GET_CONS_HD(cl);
             g_ptr lhs, rhs;
             if( is_W_UPDATE_FN(fn, &lhs, &rhs) ) {
-                ilist_ptr lhs_indices = get_lhs_indices(&vinfo_tbl, hier, lhs);
+                nlist_ptr lhs_indices = get_lhs_indices(&vinfo_tbl, hier, lhs);
                 compile_expr(&vinfo_tbl, hier, lhs_indices, rhs, FALSE);
             } else if( is_W_PHASE_DELAY(fn, &lhs, &rhs) ) {
-                ilist_ptr lhs_indices = get_lhs_indices(&vinfo_tbl, hier, lhs);
+                nlist_ptr lhs_indices = get_lhs_indices(&vinfo_tbl, hier, lhs);
                 compile_expr(&vinfo_tbl, hier, lhs_indices, rhs, TRUE);
             } else {
                 DIE("Should not be possible!");
@@ -6573,22 +6768,23 @@ traverse_pexlif(hash_record *parent_tblp, g_ptr p, string hier,
 static bool
 no_fanout(ncomp_ptr cp)
 {
-    FOREACH_NODE(nd, cp->outs) {
-	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+    FOREACH_NNODE(nd, cp->outs) {
+	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
 	if( np->fanouts != NULL )
 	    return FALSE;
     }
     return TRUE;
 }
 
+// NOTE: topological sort
 static int
 assign_rank(int depth, ncomp_ptr cp)
 {
     if( depth > 1000 ) { return 1; }
     if( cp->rank != 0 ) return cp->rank;
     int my_rank = 1;
-    FOREACH_NODE(nd, cp->outs) {
-	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
+    FOREACH_NNODE(nd, cp->outs) {
+	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd->node_idx);
 	for(idx_list_ptr ip = np->fanouts; ip != NULL; ip = ip->next) {
 	    ncomp_ptr fo = (ncomp_ptr) M_LOCATE_BUF(compositesp, ip->idx);
 	    int fo_rank = assign_rank(depth+1, fo);
@@ -6811,12 +7007,12 @@ switch_to_BDDs()
 }
 
 static int
-update_node(ste_ptr ste, int idx, gbv Hnew, gbv Lnew)
+update_node(ste_ptr ste, int node_idx, int idx, gbv Hnew, gbv Lnew)
 {
     int todo = 0;
     gbv Hcur = *(cur_buf+2*idx);
     gbv Lcur = *(cur_buf+2*idx+1);
-    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, idx);
+    nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, node_idx);
     if( np->has_weak ) {
 	gbv Hw = *(weak_buf+2*idx);
 	gbv Lw = *(weak_buf+2*idx+1);
@@ -6833,7 +7029,7 @@ update_node(ste_ptr ste, int idx, gbv Hnew, gbv Lnew)
 	    if( c_NEQ(abort, c_ZERO) ) {
 		FP(warning_fp,
 		  "Warning: Antecedent failure at time %d on node %s\n",
-		  ste->cur_time, idx2name(np->idx));
+		   ste->cur_time, idx2name(node_idx, idx-np->vec->map->ilist->from));
 		if( print_failures ) {
 		    FP(warning_fp, "Current value:");
 		    cHL_Print(warning_fp, Hnew, Lnew);
@@ -6922,9 +7118,12 @@ initialize(ste_ptr ste, bool trace_all)
 	int idx = 0;
 	FOR_BUF(nodesp, nnode_rec, np) {
 	    if( trace_all || np->has_trace ) {
-		gbv curH = *(cur_buf+2*idx);
-		gbv curL = *(cur_buf+2*idx+1);
-		record_trace(idx, 0, curH, curL);
+
+              FOREACH_NODE(i, np->vec->map->ilist) {
+		gbv curH = *(cur_buf+2*i);
+                gbv curL = *(cur_buf + 2 * i + 1);
+                record_trace(np->idx, i, 0, curH, curL);
+              }
 	    }
 	    idx++;
 	}
@@ -6967,9 +7166,9 @@ has_ifc_nodes(vstate_ptr vp, ilist_ptr il, ilist_ptr *silp, ilist_ptr *rilp)
     *rilp = NULL;
     FOREACH_NODE(nd, il) {
 	if( find_hash(&(vp->ifc_nds), INT2PTR(nd)) != NULL ) {
-	    *silp = append_range(*silp, nd, nd);
+	  *silp = append_range(*silp, _l->node_idx, nd, nd);
 	} else {
-	    *rilp = append_range(*rilp, nd, nd);
+	  *rilp = append_range(*rilp, _l->node_idx, nd, nd);
 	}
     }
     return TRUE;
@@ -6997,9 +7196,9 @@ has_stop_nodes(vstate_ptr vp, ilist_ptr il, ilist_ptr *silp, ilist_ptr *rilp)
     *rilp = NULL;
     FOREACH_NODE(nd, il) {
 	if( find_hash(&(vp->stop_nds), INT2PTR(nd)) != NULL ) {
-	    *silp = append_range(*silp, nd, nd);
+	  *silp = append_range(*silp, _l->node_idx, nd, nd);
 	} else {
-	    *rilp = append_range(*rilp, nd, nd);
+	  *rilp = append_range(*rilp, _l->node_idx, nd, nd);
 	}
     }
     return TRUE;
@@ -7160,6 +7359,7 @@ limited_draw_fanin(vstate_ptr vsp, ilist_ptr il, hash_record *limit_tblp,
     ilist_ptr	cur_list = NULL;
     sch_list_ptr cur_children = NULL;
     FOREACH_NODE(nd, il) {
+  ASSERT(0); // unimplemented, need to transpose this to word level structure
 	nnode_ptr np = (nnode_ptr) M_LOCATE_BUF(nodesp, nd);
 	vis_ptr vp = get_vis_info_at_level(np->draw_info, draw_level);
 	int new_type;
@@ -7174,7 +7374,7 @@ limited_draw_fanin(vstate_ptr vsp, ilist_ptr il, hash_record *limit_tblp,
 	    new_type = -3;
 	}
 	if( current_type == -99 || current_type == new_type ) {
-	    cur_list = append_range(cur_list, nd, nd);
+	  cur_list = append_range(cur_list, nd, nd, nd);
 	    current_type = new_type;
 	} else {
 	    sch_ptr child =
@@ -7190,7 +7390,7 @@ limited_draw_fanin(vstate_ptr vsp, ilist_ptr il, hash_record *limit_tblp,
 		tsl->next = sl;
 	    }
 	    current_type = new_type;
-	    cur_list = append_range(NULL, nd, nd);
+	    cur_list = append_range(NULL, nd, nd, nd);
 	}
     }
     if( cur_children == NULL ) {
@@ -7248,7 +7448,7 @@ limited_draw_fanin(vstate_ptr vsp, ilist_ptr il, hash_record *limit_tblp,
             if( !all_outs(il, cur_info->fa_outs) ) {
                 ilist_ptr new_il = NULL;
                 for(vis_io_ptr vp=cur_info->fa_outs; vp != NULL; vp=vp->next) {
-                    new_il = ilist_append(new_il, ilist_copy(vp->acts));
+                    new_il = ilist_append(new_il, ilist_copy(vp->acts->ilist));
                 }
                 string pfn = strtemp("draw_split");
                 pfn = wastrsave(&strings, pfn);
@@ -7272,7 +7472,7 @@ limited_draw_fanin(vstate_ptr vsp, ilist_ptr il, hash_record *limit_tblp,
 	    res->children = NULL;
 	    for(vis_io_ptr vi = cur_info->fa_inps; vi != NULL; vi = vi->next) {
 		sch_ptr child =
-		    limited_draw_fanin(vsp, vi->acts, limit_tblp, draw_level);
+		    limited_draw_fanin(vsp, vi->acts->ilist, limit_tblp, draw_level);
 		sch_list_ptr sl=(sch_list_ptr)new_rec(&(vsp->sch_list_rec_mgr));
 		sl->sch = child;
 		sl->next = NULL;
@@ -7332,7 +7532,7 @@ same_ilist(ilist_ptr il1, ilist_ptr il2)
 static bool
 all_outs(ilist_ptr il, vis_io_ptr vp)
 {
-    if( vp != NULL && vp->next == NULL && same_ilist(il, vp->acts ) ) {
+    if( vp != NULL && vp->next == NULL && same_ilist(il, vp->acts->ilist ) ) {
 	return TRUE;
     }
     hash_record used;
@@ -7342,8 +7542,8 @@ all_outs(ilist_ptr il, vis_io_ptr vp)
 	    insert_hash(&used, INT2PTR(nd), INT2PTR(1));
     }
     while( vp != NULL ) {
-	FOREACH_NODE(nd, vp->acts) {
-	    if( find_hash(&used, INT2PTR(nd)) == NULL ) {
+	FOREACH_NNODE(nd, vp->acts) {
+	    if( find_hash(&used, INT2PTR(nd->node_idx)) == NULL ) {
 		dispose_hash(&used, NULLFCN);
 		return FALSE;
 	    }
@@ -7488,7 +7688,7 @@ draw_fanin(vstate_ptr vsp, ilist_ptr il, int levels, int anon_cnt,
 	    new_type = -3;
 	}
 	if( current_type == -99 || current_type == new_type ) {
-	    cur_list = append_range(cur_list, nd, nd);
+	  cur_list = append_range(cur_list, nd, nd, nd);
 	    current_type = new_type;
 	} else {
 	    sch_ptr child = draw_fanin(vsp, cur_list, levels, -1, draw_level);
@@ -7503,7 +7703,7 @@ draw_fanin(vstate_ptr vsp, ilist_ptr il, int levels, int anon_cnt,
 		tsl->next = sl;
 	    }
 	    current_type = new_type;
-	    cur_list = append_range(NULL, nd, nd);
+	    cur_list = append_range(NULL, nd, nd, nd);
 	}
     }
     if( cur_children == NULL ) {
@@ -7562,7 +7762,7 @@ draw_fanin(vstate_ptr vsp, ilist_ptr il, int levels, int anon_cnt,
 	    if( !all_outs(il, cur_info->fa_outs) ) {
 		ilist_ptr new_il = NULL;
 		for(vis_io_ptr vp=cur_info->fa_outs; vp != NULL; vp=vp->next) {
-		    new_il = ilist_append(new_il, ilist_copy(vp->acts));
+		    new_il = ilist_append(new_il, ilist_copy(vp->acts->ilist));
 		}
 		string pfn = strtemp("draw_split");
 		pfn = wastrsave(&strings, pfn);
@@ -7583,7 +7783,7 @@ draw_fanin(vstate_ptr vsp, ilist_ptr il, int levels, int anon_cnt,
 	    res->pfn = cur_info->pfn;
 	    res->children = NULL;
 	    for(vis_io_ptr vi = cur_info->fa_inps; vi != NULL; vi = vi->next) {
-		sch_ptr child = draw_fanin(vsp,vi->acts,levels-1,-1,draw_level);
+		sch_ptr child = draw_fanin(vsp,vi->acts->ilist,levels-1,-1,draw_level);
 		sch_list_ptr sl =(sch_list_ptr)new_rec(&(vsp->sch_list_rec_mgr));
 		sl->sch = child;
 		sl->next = NULL;
@@ -8119,34 +8319,35 @@ _DuMMy_fsm()
     dbg_info("", 0, NULL);
 }
 
+/* TODO: this logic should also be rewritten in the future, so that it traverses the word level structure instead of bit level */
 static event_list_ptr
 add_active_event(hash_record *tblp, event_ptr ep)
 {
-    int nd_idx = ep->nd_idx;
+    int bit_idx = ep->bit_idx;
     event_list_ptr new_elp = (event_list_ptr) new_rec(event_list_rec_mgrp);
     new_elp->ep = ep;
-    event_list_ptr  elp = (event_list_ptr) find_hash(tblp, INT2PTR(nd_idx));
+    event_list_ptr  elp = (event_list_ptr) find_hash(tblp, INT2PTR(bit_idx));
     new_elp->next = elp;
     if( elp != NULL ) {
-	delete_hash(tblp, INT2PTR(nd_idx));
+	delete_hash(tblp, INT2PTR(bit_idx));
     }
-    insert_hash(tblp, INT2PTR(nd_idx), new_elp);
+    insert_hash(tblp, INT2PTR(bit_idx), new_elp);
     return new_elp;
 }
 
 static event_list_ptr
 delete_active_event(hash_record *tblp, event_ptr ep)
 {
-    int nd_idx = ep->nd_idx;
-    event_list_ptr  elp = (event_list_ptr) find_hash(tblp, INT2PTR(nd_idx));
+    int bit_idx = ep->bit_idx;
+    event_list_ptr  elp = (event_list_ptr) find_hash(tblp, INT2PTR(bit_idx));
     ASSERT(elp != NULL);
     int event_id = ep->event_id;
     if( elp->ep->event_id == event_id ) {
 	// First in list
-	delete_hash(tblp, INT2PTR(nd_idx));
+	delete_hash(tblp, INT2PTR(bit_idx));
 	event_list_ptr next = elp->next;
 	if( next != NULL ) {
-	    insert_hash(tblp, INT2PTR(nd_idx), next);
+	    insert_hash(tblp, INT2PTR(bit_idx), next);
 	}
 	free_rec(event_list_rec_mgrp, elp);
 	return next;
@@ -8167,7 +8368,11 @@ delete_active_event(hash_record *tblp, event_ptr ep)
 static void
 allocate_ste_buffers(fsm_ptr fsm)
 {
-    int nds  = COUNT_BUF(&(fsm->nodes));
+  int nds = 0;
+  nnode_ptr nd;
+  FOR_BUF(&(fsm->nodes), nnode_rec, nd) { nds += nd->vec->size; }
+  FP(warning_fp, "ste buffer allocate size is %d\n", nds);
+  //  COUNT_BUF(&(fsm->nodes));
     weak_buf = allocate_value_buf(nds, c_ZERO, c_ZERO);
     ant_buf  = allocate_value_buf(nds, c_ONE, c_ONE);
     cons_buf = allocate_value_buf(nds, c_ONE, c_ONE);
@@ -8265,7 +8470,9 @@ gSTE(g_ptr redex, value_type type)
     //
     // Now translate weakenings, ant, cons and trl into events
     //
-    bool ok = create_event_buffer(ste,event_bufp,wl,ant,cons,trl,abort_ASAP);
+    bool ok =
+      create_event_buffer(ste, event_bufp, wl, ant, cons, trl, abort_ASAP);
+
     //
     // Allocate value buffers
     //
@@ -8364,7 +8571,6 @@ gSTE(g_ptr redex, value_type type)
 	process_event(event_bufp, t);
 	nnode_ptr np;
 	// Put nodes whose weak/ant changed on evaluation list.
-	int idx = 0;
 	FOR_BUF(nodesp, nnode_rec, np) {
 	    if( np->has_ant_or_weak_change ) {
 		if( np->composite >= 0 ) {
@@ -8372,16 +8578,17 @@ gSTE(g_ptr redex, value_type type)
 		    c = (ncomp_ptr) M_LOCATE_BUF(compositesp,np->composite);
 		    add_op_todo(c);
 		} else if( np->composite == -1 ) {
-		    // Input node
-		    update_node(ste, idx, c_ONE, c_ONE);
+                  // Input node
+                  FOREACH_NODE(idx, np->vec->map->ilist) {
+		  update_node(ste, np->idx, idx, c_ONE, c_ONE);                  
+                  }
 		}
 		np->has_ant_or_weak_change = FALSE;
 	    }
-	    idx++;
 	}
 	do_combinational(ste);
 	// Do consequents and traces
-	idx = 0;
+	int idx = 0;
 	FOR_BUF(nodesp, nnode_rec, np) {
 	    if( np->has_cons ) {
 		gbv curH = *(cur_buf+2*idx);
@@ -8395,7 +8602,7 @@ gSTE(g_ptr redex, value_type type)
 				   c_OR(chkL,c_NOT(curL)));
 		    if( c_NEQ(ok, c_ONE) ) {
 			FP(err_fp, "Warning: Consequent failure at time %d", t);
-			FP(err_fp, " on node %s\n", idx2name(idx));
+			FP(err_fp, " on node %s\n", idx2node_name(idx));
 			if( print_failures ) {
 			    FP(err_fp, "Current value:");
 			    cHL_Print(err_fp, curH, curL);
@@ -8441,10 +8648,13 @@ gSTE(g_ptr redex, value_type type)
 		v = c_AND(v, c_OR(c_NOT(curL), chkL));
 		ste->checkTrajectory = v;
 	    }
-	    if( trace_all || np->has_trace ) {
-		gbv curH = *(cur_buf+2*idx);
-		gbv curL = *(cur_buf+2*idx+1);
-		record_trace(idx, t, curH, curL);
+            if (trace_all || np->has_trace) {
+              FOREACH_NODE(i, np->vec->map->ilist) {
+		gbv curH = *(cur_buf+2*i);
+		gbv curL = *(cur_buf+2*i+1);
+		record_trace(np->idx, i, t, curH, curL);              
+              }
+
 	    }
 	    idx++;
 	}
@@ -8485,7 +8695,7 @@ dbg_dump_buf(string msg, gbv *buf)
 {
     FP(err_fp, "\n-----%s------\n ", msg);
     for(unint i = 0; i < COUNT_BUF(nodesp); i++) {
-	FP(err_fp, "Node %s: ", idx2name(i));
+	FP(err_fp, "Node %s: ", idx2node_name(i));
 	gbv H = *(buf+2*i);
 	gbv L = *(buf+2*i+1);
 	cHL_Print(err_fp, H, L);
@@ -8545,7 +8755,7 @@ DBG_print_vis_io_ptr(vis_io_ptr vp)
     FP(err_fp, " vis_io_ptr:");
     while( vp ) {
 	FP(err_fp, " %s [", vp->f_vec);
-	base_print_ilist(vp->acts);
+	base_print_ilist(vp->acts->ilist);
 	FP(err_fp, "]");
 	vp = vp->next;
     }
@@ -8643,9 +8853,15 @@ gen_pexlif2fsm(g_ptr p, g_ptr black_box_list, int max_depth)
     declare_vector(&parent_tbl, "", wastrsave(&strings, "!T"),FALSE,NULL,s_ES);
     ihier_buf[0] = 0;
     if( traverse_pexlif(&parent_tbl, p, "", TRUE, 0, 1, max_depth) ) {
-        fsm->top_name = get_top_name(p);
+      fsm->top_name = get_top_name(p);
+//      dbg_print_nodes(stdout_fp);
+//      print_composites(stdout_fp);
         fsm->ranks = rank_order();
         fsm->sha256_sig = compute_sha256_signature(fsm);
+        int bit_cnt = 0;
+        nnode_ptr nd;
+        FOR_BUF(&(fsm->nodes), nnode_rec, nd) { bit_cnt += nd->vec->size; }
+        fsm->bit_cnt = bit_cnt;
     } else {
 	fsm = NULL;
     }
@@ -8944,5 +9160,7 @@ dbg_print_stop_nds(pointer key, pointer data)
 {
     (void) data;
     int id = PTR2INT(key);
-    FP(err_fp, " %s", idx2name(id));
+    FP(err_fp, " %s", idx2node_name(id));
 }
+
+#pragma GCC diagnostic pop

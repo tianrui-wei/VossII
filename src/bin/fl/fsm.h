@@ -11,7 +11,8 @@
 /* fsm.h -- header for fsm.c */
 #ifdef EXPORT_FORWARD_DECL
 /* --- Forward declarations that need to be exported to earlier .h files --- */
-typedef struct ilist_rec    *ilist_ptr;
+typedef struct ilist_rec *ilist_ptr;
+typedef struct nlist_rec *nlist_ptr;
 typedef struct vec_info_rec *vec_info_ptr;
 typedef struct sch_rec	    *sch_ptr;
 typedef struct fsm_rec	    *fsm_ptr;	    // ALLOCATE: get_fsm_rec()
@@ -46,16 +47,40 @@ void	    DBG_print_vec_info_ptr(vec_info_ptr vp);
 /* ----------------------- Main include file ------------------------------- */
 #ifndef FSM_H
 #define FSM_H
-#include "fl.h"	/* Global data types and include files 		     */
+#include "fl.h" /* Global data types and include files 		     */
 
 typedef struct event_rec    *event_ptr;
 
+/**
+   node_idx is a current hack and should be removed in the future for a more efficent implementation
+   it's currently there for ilist_nds, which the visualization tool requires and we haven't removed yet
+   */
+  
 typedef struct ilist_rec {
     int		from;
     int		to;
     int		size;
-    ilist_ptr	next;
+    int         node_idx;
+    ilist_ptr next;
 } ilist_rec;
+
+
+
+
+/** a normalized representation */
+
+#define NODE_IDX_WIDTH 26
+
+/**
+   @node_idx: reverse index into a node structure
+   This is to replace the old behavior where idx is the start for the first ilist
+   Then on reverse lookup from an ilist it uses the start to index back into the node
+ **/  
+typedef struct nlist_rec {
+  ilist_ptr ilist;
+  int node_idx:NODE_IDX_WIDTH;
+  nlist_ptr next;
+} nlist_rec;
 
 typedef union {
     formula	f;
@@ -70,7 +95,7 @@ typedef struct vec_info_rec {
     string	    signature;
     int		    size:31;
     unint	    transient:1;
-    ilist_ptr	    map;
+    nlist_ptr	    map;
     string	    value_list;
     vec_info_ptr    next;
 } vec_info_rec;
@@ -78,7 +103,7 @@ typedef struct vec_info_rec {
 typedef struct vis_io_rec   *vis_io_ptr;
 typedef struct vis_io_rec {
     string	f_vec;
-    ilist_ptr	acts;
+    nlist_ptr	acts;
     vis_io_ptr	next;
 } vis_io_rec;
 
@@ -114,9 +139,11 @@ typedef struct fsm_rec {
     string	sha256_sig;
     string	top_name;
     int		ranks;
+    int         bit_cnt;
     hash_record all_name_tbl;	    // TYPE: string -> vec_info_ptr
     rec_mgr     vec_info_rec_mgr;   // TYPE: vec_info_rec
     rec_mgr     ilist_rec_mgr;	    // TYPE: ilist_rec
+    rec_mgr     nlist_rec_mgr;	    // TYPE: nlist_rec
     rec_mgr	vec_rec_mgr;	    // TYPE: vec_rec
     rec_mgr	range_rec_mgr;	    // TYPE: range_rec
     rec_mgr	idx_list_rec_mgr;   // TYPE: idx_list_rec
@@ -164,8 +191,8 @@ typedef struct ncomp_rec {
 	unint				flag:1;	// General purpose bit
 	wl_op				op;
 	ncomp_args			arg;
-	ilist_ptr			inps;
-	ilist_ptr			outs;
+	nlist_ptr			inps;
+	nlist_ptr			outs;
 } ncomp_rec;
 
 typedef struct event_list_rec	*event_list_ptr;
@@ -177,14 +204,14 @@ typedef struct event_list_rec {
 typedef struct nnode_rec    *nnode_ptr;
 typedef struct nnode_rec {
     vec_info_ptr    vec;
-    unint	    idx:26;	    // I think 134 million nodes are enough....
+    unint	    idx:NODE_IDX_WIDTH;	    // I think 134 million nodes are enough....
     unint	    has_phase_event:1;
     unint	    has_ant_or_weak_change:1;
     unint	    has_weak:1;
     unint	    has_ant:1;
     unint	    has_cons:1;
     unint	    has_trace:1;
-    int		    composite:30;
+    int		    composite:30; // {a[1:0], b[1:0]} = {c[1:0], d[1:0]}
     unint	    is_top_input:1;
     unint	    is_top_output:1;
     idx_list_ptr    fanouts;
@@ -204,10 +231,15 @@ typedef enum {
 		end_trace   = 7
 }	    event_type;
 
+
+// problem: the event rec also bit blasts things, so that the nd_idx actually means the real idx. A better approach would be to extend the H/L to be an dynamically sized array where it stores the sequence of bits for a node, but to begin with I think we can add another field called idx
+// FIXME: remove bit_idx
+  
 typedef struct event_rec {
     int		    event_id;
     event_type	    type;
     int		    nd_idx;
+    int             bit_idx;
     int		    time;
     gbv		    H;	// SEL: current_type -> use_bdds use_bexprs use_ints
     gbv		    L;	// SEL: current_type -> use_bdds use_bexprs use_ints
@@ -300,6 +332,14 @@ typedef struct node_comp_pair_rec {
 #define FOREACH_NODE(i, il) \
     for(ilist_ptr _l = il; _l != NULL; _l = _l->next) \
     for(int i = _l->from; abs(i-_l->from) < _l->size; (_l->from>_l->to)?i--:i++)
+
+#define FOREACH_NNODE(i, il) \
+    for(nlist_ptr i = il; i != NULL; i = i->next)
+
+#define FOREACH_INODE(i, il) \
+    for(ilist_ptr i = il; i != NULL; i = i->next)
+
+#undef NODE_IDX_WIDTH
 
 #endif /* FSM_H */
 #endif /* EXPORT_FORWARD_DECL */

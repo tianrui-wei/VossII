@@ -651,12 +651,12 @@ fl_main(int argc, char *argv[])
 	    }
 	    fprintf(fp, "(_load \"%s/preamble.fl\" F) fseq ();\n",
 			binary_location);
-	    fprintf(fp, "((_load \"%s\" F) fseq ())", start_file);
+	    fprintf(fp, "(_load \"%s\" F) fseq ();\n", start_file);
 	    if( exit_on_failure ) {
 		fprintf(fp, " catch (exit 1)");
 	    }
 	    fprintf(fp, ";\n");
-	    fclose(fp);
+            fclose(fp);
 	    switch( setjmp(toplevel_eval_env) ) {
 		case 0:
 		    Read_from_file(filename, FALSE, FALSE);
@@ -669,8 +669,8 @@ fl_main(int argc, char *argv[])
 	    }
 	} else {
 	    Sprintf(buf, "%s/preamble.fl", binary_location);
-	    Read_from_file(buf, FALSE, FALSE);
-	}
+	    Read_from_file(start_file, FALSE, FALSE);
+	}			/*  */
         Set_default_break_handler();
         while(1) {
             switch( setjmp(toplevel_eval_env) ) {

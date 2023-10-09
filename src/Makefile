@@ -72,9 +72,9 @@ VERSION_DATE = `date +'%y/%m/%d'`
 #-----------------------------------------------------------------------------
 # Debugging version or optimized version?
 #-----------------------------------------------------------------------------
-DEBUG_FLAG = '-g -DDEBUG'	# Maybe:  -fstack-protector-all
+DEBUG_FLAG = '-g3 -ggdb3 -DDEBUG'	# Maybe:  -fstack-protector-all
 #DEBUG_FLAG = '-g'		#
-#OPTIMIZATION_FLAG =  '-O3'	# Maybe: -O4
+OPTIMIZATION_FLAG =  '-O0'	# Maybe: -O4
 
 usage:
 	@echo "Basic targets: install, package or clean"

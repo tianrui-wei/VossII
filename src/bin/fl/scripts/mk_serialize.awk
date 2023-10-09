@@ -6,6 +6,7 @@ BEGIN	    {
 		top_level["vstate_ptr"] = 1;
 		top_level["idx_list_ptr"] = 1;
 		top_level["ilist_ptr"] = 1;
+		top_level["nlist_ptr"] = 1;
 		top_level["table_ptr"] = 1;
 
 		marked["int"] = 1;

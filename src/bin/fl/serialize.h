@@ -65,7 +65,8 @@ void write_table_ptr(FILE *fp, table_ptr p);
 void read_table_ptr(FILE *fp, table_ptr *pp);
 void write_ilist_ptr(FILE *fp, ilist_ptr p);
 void read_ilist_ptr(FILE *fp, ilist_ptr *pp);
-
+void write_nlist_ptr(FILE *fp, nlist_ptr p);
+void read_nlist_ptr(FILE *fp, nlist_ptr *pp);
 
 #else /* EXPORT_FORWARD_DECL */
 /* ----------------------- Main include file ------------------------------- */
